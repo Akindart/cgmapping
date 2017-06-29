@@ -162,7 +162,9 @@ add_library(cgmapping_lib ${LIB_TYPE}
         include/cgmapping/timer.h
         include/cgmapping/image_pyramid.h
         src/cgmapping/image_pyramid.cpp
-        src/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.cpp)
+        src/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.cpp
+        include/general_utils.h
+         src/general_utils.cpp)
 
 
 cuda_add_library(cuda_aux_lib ${LIB_TYPE}
@@ -199,7 +201,8 @@ add_library(culina_lib ${LIB_TYPE}
         include/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h
 
         include/cuLiNA/culina_operations.h
-        src/cuLiNA/culina_operations.cpp)
+        src/cuLiNA/culina_operations.cpp
+        )
 
 cuda_add_library(image_cuda_lib ${LIB_TYPE}
 

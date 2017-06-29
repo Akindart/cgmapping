@@ -6,20 +6,21 @@
 #include <cuLiNA/culina_base_matrix.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+#include <cuLiNA/culina_definition.h>
 
 using namespace cuLiNA;
 
 cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_base_matrix<double> *cu_matrix1,
-                                             culina_base_matrix<double> *cu_matrix2,
-                                             culina_base_matrix<double> *result_matrix,
-                                             cublasOperation_t op_m1,
-                                             cublasOperation_t op_m2,
-                                             double alpha,
-                                             double beta,
-                                             cuLiNA_operation_t cuLiNA_op_m1,
-                                             cuLiNA_operation_t cuLiNA_op_m2,
-                                             culina_base_matrix<double> *workspace,
-                                             double *TAU) {
+                                                     culina_base_matrix<double> *cu_matrix2,
+                                                     culina_base_matrix<double> *result_matrix,
+                                                     cublasOperation_t op_m1,
+                                                     cublasOperation_t op_m2,
+                                                     double alpha,
+                                                     double beta,
+                                                     cuLiNA_operation_t cuLiNA_op_m1,
+                                                     cuLiNA_operation_t cuLiNA_op_m2,
+                                                     culina_base_matrix<double> *workspace,
+                                                     double *TAU) {
     
     int *dev_info = NULL, gpu_info;
     
@@ -30,7 +31,7 @@ cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_base_matrix<double> 
     /***
      *
      * if the left-most matrix of the right hand-side part of the equation is supposed to be inverted before
-     * multiplication
+     * multiplication.
      *
      * */
     if (cuLiNA_op_m1 == CULINA_INVERSE_ON) {
@@ -55,6 +56,22 @@ cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_base_matrix<double> 
     
     return CULINA_SUCCESS;
     
+}
+
+cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(cuLiNA::culina_base_matrix<double> *cu_matrix1,
+                                                             cuLiNA::culina_base_matrix<double> *cu_matrix2,
+                                                             cuLiNA::culina_base_matrix<double> *cu_matrix3,
+                                                             cuLiNA::culiopD_t) {
+    
+    
+    int *dev_info = NULL, gpu_info;
+    
+    cudaMalloc((void **) &dev_info, sizeof(int));
+    
+    cusolverStatus_t stat;
+    
+    
+    return CULINA_SUCCESS;
 }
 
 cuLiNA_error_t culina_matrix_Smultiplication(culina_base_matrix<float> *cu_matrix1,

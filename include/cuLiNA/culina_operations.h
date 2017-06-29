@@ -20,6 +20,11 @@ namespace cuLiNA {
      *
      * */
     
+    extern cuLiNA::cuLiNA_error_t culina_matrix_Dmultiplication(cuLiNA::culina_base_matrix<double> *cu_matrix1,
+                                                                cuLiNA::culina_base_matrix<double> *cu_matrix2,
+                                                                cuLiNA::culina_base_matrix<double> *cu_matrix3,
+                                                                cuLiNA::culiopD_t = culiopD_default);
+    
     //TODO: generate function definition, comments, and add option to invert cu_matrix1 or cu_matrix2 before multiplication procedure
     extern cuLiNA::cuLiNA_error_t culina_matrix_Dmultiplication(cuLiNA::culina_base_matrix<double> *cu_matrix1,
                                                                 cuLiNA::culina_base_matrix<double> *cu_matrix2,

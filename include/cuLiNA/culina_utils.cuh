@@ -19,7 +19,8 @@ namespace cuLiNA {
                                                       int n_rows,
                                                       int n_columns,
                                                       cudaStream_t *strm = NULL);
-        
+    
+    
     
 }
 
