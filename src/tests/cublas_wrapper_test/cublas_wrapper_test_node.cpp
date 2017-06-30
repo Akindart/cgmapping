@@ -4,14 +4,8 @@
 
 #include <iostream>
 #include <cuLiNA/culina_definition.h>
-#include "cuLiNA/cuBLAS_wrapper/cublas_wrapper.h"
 #include <cgmapping/timer.h>
-#include <cuda_device_properties/cuda_device_properties.h>
 #include <cuLiNA/culina_operations.h>
-#include <cusolverDn.h>
-#include <cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h>
-#include <cuLiNA/culina_operations.h>
-
 
 int main(int argc, char **argv) {
     
@@ -129,14 +123,19 @@ int main(int argc, char **argv) {
  
     //std::cout << "lwork: " << lwork << std::endl;
     
-    cuLiNA::culina_matrix<double, 24, 1> workspace;
-    workspace._allocateMatrixDataMemory();
+    cuLiNA::culiopD_t culiopD;
+    
+    cuLiNA::culina_matrix<double, 24, 1> *workspace = new cuLiNA::culina_matrix<double, 24, 1>();
+    workspace->_allocateMatrixDataMemory();
+    
+    cudaMalloc ((void**)&culiopD.d_TAU, sizeof(double) * 4);
+    cudaMalloc ((void**)&culiopD.dev_info, sizeof(int));
+    
+    culiopD.workspace = workspace;
+    culiopD.cuLiNA_op_m1 = cuLiNA::CULINA_INVERSE_ON;
+    
 
-    double *d_tau;
-
-    cudaMalloc ((void**)&d_tau, sizeof(double) * 4);
-
-    cuLiNA::culina_matrix_Dmultiplication(&d_vector, &d_vector2, NULL, CUBLAS_OP_N, CUBLAS_OP_N, 1, 0, cuLiNA::CULINA_INVERSE_ON, cuLiNA::CULINA_INVERSE_OFF, &workspace, d_tau);
+    cuLiNA::culina_matrix_Dmultiplication(&d_vector, &d_vector2, NULL, culiopD);
 
     std::cout << std::endl;
     std::cout << std::endl;
@@ -206,7 +205,7 @@ int main(int argc, char **argv) {
     
     cusolverDnDgeqrf_bufferSize(cuSOLVER_wrapper::cusolver_wrapper::_getCusolverDn_handle(), 3, 3, test_m._getRawData(), 3, &Lwork );
     
-    std::cout << "QR fact buffersize for 4x4 double matrix: " << Lwork << std::endl;
+    std::cout << "QR fact buffersize for 3x3 double matrix: " << Lwork << std::endl;
     
     return 0;
     

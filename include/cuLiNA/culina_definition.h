@@ -6,7 +6,8 @@
 #define CGMAPPING_CUBLAS_WRAPPER_DEFINITION_H
 
 #include "cuLiNA/culina_matrix.h"
-#include <cuLiNA/culina_data_types.h>
+#include <cuLiNA/culina_error_data_types.h>
+#include <cuLiNA/culina_operation_data_types.h>
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
 
 namespace cuLiNA {

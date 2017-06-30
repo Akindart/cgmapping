@@ -3,7 +3,6 @@
 //
 
 #include <cuLiNA/culina_utils.cuh>
-#include "../../include/cuLiNA/culina_data_types.h"
 
 __host__ cuLiNA::cuLiNA_error_t
 cuLiNA::set_identity_matrix(double *d_matrix, int n_rows, int n_columns, cudaStream_t *strm) {

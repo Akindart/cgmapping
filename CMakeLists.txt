@@ -196,13 +196,13 @@ add_library(culina_lib ${LIB_TYPE}
 
         include/cuLiNA/culina_definition.h
 
-        include/cuLiNA/culina_data_types.h
+        include/cuLiNA/culina_error_data_types.h
 
         include/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h
 
         include/cuLiNA/culina_operations.h
         src/cuLiNA/culina_operations.cpp
-        )
+        include/cuLiNA/culina_operation_data_types.h)
 
 cuda_add_library(image_cuda_lib ${LIB_TYPE}
 

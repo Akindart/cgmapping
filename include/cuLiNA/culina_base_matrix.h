@@ -7,7 +7,7 @@
 
 #include <thrust/device_vector.h>
 #include <cuLiNA/culina_utils.cuh>
-#include <cuLiNA/culina_data_types.h>
+#include <cuLiNA/culina_error_data_types.h>
 
 namespace cuLiNA {
     
@@ -20,7 +20,7 @@ namespace cuLiNA {
         int number_of_elements_;
         thrust::device_vector<T> data_;
         thrust::device_vector<T> inverse_;
-     
+        
      public:
         
         culina_base_matrix() {
