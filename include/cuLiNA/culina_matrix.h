@@ -19,7 +19,7 @@ namespace cuLiNA {
      
      public:
         
-        culina_matrix() : culina_base_matrix<T>(rows, columns, leading_dimension) {};
+        culina_matrix(matrix_advanced_initialization_t mai = NOTHING) : culina_base_matrix<T>(rows, columns, leading_dimension, mai) {};
         
         culina_matrix(thrust::device_vector<T> &data) : culina_base_matrix<T>(data,
                                                                               rows,

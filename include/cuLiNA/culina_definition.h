@@ -6,7 +6,8 @@
 #define CGMAPPING_CUBLAS_WRAPPER_DEFINITION_H
 
 #include "cuLiNA/culina_matrix.h"
-#include <cuLiNA/culina_data_types.h>
+#include <cuLiNA/culina_error_data_types.h>
+#include <cuLiNA/culina_operation_data_types.h>
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
 
 namespace cuLiNA {
@@ -31,6 +32,14 @@ namespace cuLiNA {
      */
     static culiopD_t culiopD_default;
     static culiopS_t culiopS_default;
+    
+    /**
+     *
+     * These declarations attack the necessity  of have a static const identity matrix to be used troughtou calculations
+     *
+     * */
+//    static culina_matrix3d identity3d(cuLiNA::IDENTITY);
+//    static culina_matrix4d identity4d(cuLiNA::IDENTITY);
     
 }
 

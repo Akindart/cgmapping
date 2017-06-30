@@ -3,15 +3,14 @@
 //
 
 #include <cuLiNA/culina_utils.cuh>
-#include "../../include/cuLiNA/culina_data_types.h"
 
 __host__ cuLiNA::cuLiNA_error_t
 cuLiNA::set_identity_matrix(double *d_matrix, int n_rows, int n_columns, cudaStream_t *strm) {
     
-    int max_block_size = cuda_device_properties::cuda_device_properties::_consult_device_properties().maxThreadsPerBlock / 2;
-    int max_grid_size[3] = {cuda_device_properties::cuda_device_properties::_consult_device_properties().maxGridSize[0],
-                            cuda_device_properties::cuda_device_properties::_consult_device_properties().maxGridSize[1],
-                            cuda_device_properties::cuda_device_properties::_consult_device_properties().maxGridSize[2]};
+    int max_block_size = cuda_device_properties::_consult_device_properties().maxThreadsPerBlock / 2;
+    int max_grid_size[3] = {cuda_device_properties::_consult_device_properties().maxGridSize[0],
+                            cuda_device_properties::_consult_device_properties().maxGridSize[1],
+                            cuda_device_properties::_consult_device_properties().maxGridSize[2]};
     
     if (n_rows != n_columns){
 
@@ -35,9 +34,11 @@ cuLiNA::set_identity_matrix(double *d_matrix, int n_rows, int n_columns, cudaStr
         
 #endif
         
-        return cuLiNA::CULINA_PARAMETERS_MSIMATCH;
+        return cuLiNA::CULINA_PARAMETERS_MISMATCH;
        
     }
+    
+    
     
     int   c1, c2;
     int leftover_of_c1, leftover_of_c2;
@@ -106,9 +107,13 @@ cuLiNA::set_identity_matrix(double *d_matrix, int n_rows, int n_columns, cudaStr
     dim3 block_dim(block_size_x, block_size_y, 1);
     dim3 grid_dim(grid_size_x, grid_size_y, 1);
     
+   
+    
     if(strm == NULL)
         set_identity_matrix_kernel <<< grid_dim, block_dim, 0, NULL >>> (d_matrix, n_rows, n_columns);
     else set_identity_matrix_kernel <<< grid_dim, block_dim, 0, *strm >>> (d_matrix, n_rows, n_columns);
+    
+    std::cout << "aushuashaus" << std::endl;
     
     return cuLiNA::CULINA_SUCCESS;
     

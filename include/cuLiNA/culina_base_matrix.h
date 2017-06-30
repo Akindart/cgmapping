@@ -7,9 +7,16 @@
 
 #include <thrust/device_vector.h>
 #include <cuLiNA/culina_utils.cuh>
-#include <cuLiNA/culina_data_types.h>
+#include <cuLiNA/culina_error_data_types.h>
 
 namespace cuLiNA {
+    
+    typedef enum{
+        
+        IDENTITY,
+        NOTHING
+        
+    }matrix_advanced_initialization_t;
     
     template<typename T>
     class culina_base_matrix {
@@ -20,7 +27,7 @@ namespace cuLiNA {
         int number_of_elements_;
         thrust::device_vector<T> data_;
         thrust::device_vector<T> inverse_;
-     
+        
      public:
         
         culina_base_matrix() {
@@ -40,15 +47,26 @@ namespace cuLiNA {
          * @param rows the number of rows that this matrix have
          * @param columns the number of columns that this matrix have
          * @param leading_dimension the number of rows that this matrix have in order to cuBLAS be capable of using the matrix
-         *
+         * @param mai
          *
          * */
-        culina_base_matrix(int rows, int columns, int leading_dimension) {
+        culina_base_matrix(int rows, int columns, int leading_dimension, matrix_advanced_initialization_t mai = NOTHING) {
             
             rows_ = rows;
             columns_ = columns;
             leading_dimension_ = leading_dimension;
             number_of_elements_ = rows_ * columns_;
+            
+            if(mai == IDENTITY){
+    
+                cuLiNA_error_t stat;
+                
+                stat = this->_setIdentity();
+    
+                cuLiNACheckErrors(stat, __FILE__, __FUNCTION__);
+                //assert(stat == CULINA_SUCCESS);
+                
+            }
             //data_.reserve((uint) number_of_elements_);
             
             
@@ -129,7 +147,11 @@ namespace cuLiNA {
             
             T *d_matrix = this->_getRawData();
     
-            return cuLiNA::set_identity_matrix(d_matrix, rows_, columns_, strm);
+            cuLiNA_error_t stat;
+            
+            stat = cuLiNA::set_identity_matrix(d_matrix, rows_, columns_, strm);
+            
+            return stat;
             
         };
         

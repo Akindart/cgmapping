@@ -160,6 +160,9 @@ namespace cuBLAS_wrapper {
                                                                 cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER,
                                                                 cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                                 cublasDiagType_t diag = CUBLAS_DIAG_NON_UNIT);
+    
+        //TODO create a _cublasGetErrorString function
+        static void _cublasCheckErrors(cublasStatus_t stat, const std::string &file, const std::string &function);
         
         static cublasHandle_t &_getCublas_handle() {
             return cublas_wrapper::cublas_handle_;

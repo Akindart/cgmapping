@@ -3,6 +3,7 @@
 //
 
 #include <cuLiNA/cuBLAS_wrapper/cublas_wrapper.h>
+#include <general_utils.h>
 
 //need declarations of static members
 
@@ -17,7 +18,7 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_start_cublas_handle_wrapper() {
 
 #ifndef DEBUG
         
-        std::cout << "File: " << __FILE__ << " - ERROR INFO SUPPRESSED - use SET(CMAKE_CXX_FLAGS_DEBUG \"-DDEBUG\") to see it" << std::endl;
+        std::cout << "File: " << __FILE__ << " - ERROR INFO SUPPREuSSED - use SET(CMAKE_CXX_FLAGS_DEBUG \"-DDEBUG\") to see it" << std::endl;
 
 #endif
 #ifdef DEBUG
@@ -113,8 +114,10 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
     int ld_cu_m2 = cu_matrix2._getLeading_dimension();
     int ld_result = result_matrix._getLeading_dimension();
     
+    cublasStatus_t stat;
+    
     if (n > 1 && k > 1)
-        return cublasSgemm(cublas_wrapper::_getCublas_handle(),
+        stat = cublasSgemm_v2(cublas_wrapper::_getCublas_handle(),
                            op_m1,
                            op_m2,
                            m,
@@ -130,7 +133,7 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
                            ld_result);
     
     else if (n > 1 && k == 1)
-        return cublasSgemv(cublas_wrapper::_getCublas_handle(),
+        stat = cublasSgemv_v2(cublas_wrapper::_getCublas_handle(),
                            op_m1,
                            m,
                            n,
@@ -144,13 +147,17 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
                            k);
     
     else if (n == 1 && k == 1)
-        return cublasSdot_v2(cublas_wrapper::_getCublas_handle(),
+        stat = cublasSdot_v2(cublas_wrapper::_getCublas_handle(),
                              m,
                              cu_matrix1._getRawData(),
                              n,
                              cu_matrix2._getRawData(),
                              k,
                              result_matrix._getRawData());
+    
+    _cublasCheckErrors(stat, __FILE__, __FUNCTION__);
+    
+    return stat;
     
 };
 
@@ -168,17 +175,41 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dtriangular_system_solver
     int ld_cu_m1 = cu_matrix1._getLeading_dimension();
     int ld_result = result_matrix._getLeading_dimension();
     
-    return cublasDtrsm_v2(cublas_wrapper::_getCublas_handle(),
-                          side,
-                          uplo,
-                          op_m1,
-                          diag,
-                          m,
-                          n,
-                          &alpha,
-                          cu_matrix1._getRawData(),
-                          ld_cu_m1,
-                          result_matrix._getRawData(),
-                          ld_result);
+    cublasStatus_t stat = cublasDtrsm_v2(cublas_wrapper::_getCublas_handle(),
+                                         side,
+                                         uplo,
+                                         op_m1,
+                                         diag,
+                                         m,
+                                         n,
+                                         &alpha,
+                                         cu_matrix1._getRawData(),
+                                         ld_cu_m1,
+                                         result_matrix._getRawData(),
+                                         ld_result);
+    
+    _cublasCheckErrors(stat, __FILE__, __FUNCTION__);
+    
+    return stat;
+    
+};
+
+void cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(cublasStatus_t stat,
+                                                        const std::string &file,
+                                                        const std::string &function) {
+    
+    if (stat != CUBLAS_STATUS_SUCCESS) {
+        
+        std::cerr << std::endl << "###########################################################################"
+                  << std::endl << std::endl;
+        
+        std::cerr << "ERROR HAPPENED FROM WITHIN " << function << std::endl;
+        std::cerr << "File: \"" << file << "\"." << std::endl;
+        std::cerr << "CUDA ERROR: " << "de" << std::endl;
+        
+        std::cerr << std::endl << "###########################################################################"
+                  << std::endl;
+        
+    }
     
 };

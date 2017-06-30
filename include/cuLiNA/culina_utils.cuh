@@ -7,10 +7,10 @@
 
 #include <iostream>
 #include <cuda_parsing_helper_in_clion/clion_helper.h>
-#include <cuLiNA/culina_utils_kernels.cuh>
 #include <vector_types.h>
+#include <cuLiNA/culina_error_data_types.h>
 #include <cuda_device_properties/cuda_device_properties.h>
-#include "cuLiNA/culina_data_types.h"
+#include <cuLiNA/culina_utils_kernels.cuh>
 
 namespace cuLiNA {
     
@@ -20,7 +20,7 @@ namespace cuLiNA {
                                                       int n_columns,
                                                       cudaStream_t *strm = NULL);
     
-    
+
     
 }
 

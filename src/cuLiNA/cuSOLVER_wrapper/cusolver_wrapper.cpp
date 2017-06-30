@@ -3,7 +3,6 @@
 //
 
 #include <cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h>
-#include <iostream>
 
 using namespace cuSOLVER_wrapper;
 
@@ -48,6 +47,8 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_ba
     
     int m = result_matrix._getRows();
     int n = result_matrix._getColumns();
+    
+    
     
     return cusolverDnDgeqrf(cusolver_wrapper::cusolverDn_handle_,
                             m,
@@ -96,19 +97,13 @@ std::string cusolver_wrapper::_cusolver_wrapper_get_cusolver_error(cusolverStatu
     
     switch (stat) {
         
-        case CUSOLVER_STATUS_SUCCESS: return "CUSOLVER_STATUS_SUCCESS: the operation completed successfully.";
+        case CUSOLVER_STATUS_SUCCESS: return "CUSOLVER_STATUS_SUCCESS";
         
-        case CUSOLVER_STATUS_NOT_INITIALIZED:
-            return "CUSOLVER_STATUS_NOT_INITIALIZED: The cuSolver library was not initialized. This is usually caused by the\n"
-                "lack of a prior call,an error in the CUDA Runtime API called by the cuSolver routine, or an error in the hardware setup.";
+        case CUSOLVER_STATUS_NOT_INITIALIZED: return "CUSOLVER_STATUS_NOT_INITIALIZED";
         
-        case CUSOLVER_STATUS_ALLOC_FAILED:
-            return "CUSOLVER_STATUS_ALLOC_FAILED: Resource allocation failed inside the cuSolver library."
-                    "This is usually caused by a cudaMalloc() failure.\n";
+        case CUSOLVER_STATUS_ALLOC_FAILED: return "CUSOLVER_STATUS_ALLOC_FAILED";
         
-        case CUSOLVER_STATUS_INVALID_VALUE:
-            return "CUSOLVER_STATUS_INVALID_VALUE";
-            
+        case CUSOLVER_STATUS_INVALID_VALUE: return "CUSOLVER_STATUS_INVALID_VALUE";
         
         case CUSOLVER_STATUS_ARCH_MISMATCH: return "CUSOLVER_STATUS_ARCH_MISMATCH";
         
@@ -117,6 +112,25 @@ std::string cusolver_wrapper::_cusolver_wrapper_get_cusolver_error(cusolverStatu
         case CUSOLVER_STATUS_INTERNAL_ERROR: return "CUSOLVER_STATUS_INTERNAL_ERROR";
         
         case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED: return "CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+        
+    }
+    
+};
+
+void cusolver_wrapper::_cusolverCheckErrors(cusolverStatus_t stat, const std::string &file, const std::string &function) {
+    
+    if (stat != CUSOLVER_STATUS_SUCCESS) {
+        
+        std::cerr << std::endl << "###########################################################################"
+                  << std::endl << std::endl;
+        
+        std::cerr << "ERROR HAPPENED FROM WITHIN " << function << std::endl;
+        std::cerr << "File: \"" << file << "\"." << std::endl;
+        std::cerr << "CUDA ERROR: " << cuSOLVER_wrapper::cusolver_wrapper::_cusolver_wrapper_get_cusolver_error(stat)
+                  << std::endl;
+        
+        std::cerr << std::endl << "###########################################################################"
+                  << std::endl;
         
     }
     

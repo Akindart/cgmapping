@@ -54,6 +54,7 @@ namespace cuSOLVER_wrapper {
                                                                        cublasSideMode_t side = CUBLAS_SIDE_LEFT);
         
         static std::string _cusolver_wrapper_get_cusolver_error(cusolverStatus_t stat);
+        static void _cusolverCheckErrors(cusolverStatus_t stat, const std::string &file, const std::string &function);
         
     };
     

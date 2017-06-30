@@ -4,14 +4,8 @@
 
 #include <iostream>
 #include <cuLiNA/culina_definition.h>
-#include "cuLiNA/cuBLAS_wrapper/cublas_wrapper.h"
 #include <cgmapping/timer.h>
-#include <cuda_device_properties/cuda_device_properties.h>
 #include <cuLiNA/culina_operations.h>
-#include <cusolverDn.h>
-#include <cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h>
-#include <cuLiNA/culina_operations.h>
-
 
 int main(int argc, char **argv) {
     
@@ -23,9 +17,9 @@ int main(int argc, char **argv) {
     cuLiNA::culina_matrix3d d_result;
     t = tmr.elapsed();
     
-    cuda_device_properties::cuda_device_properties cudaDeviceProperties;
+    //cuda_device_properties::cuda_device_properties cudaDeviceProperties;
     
-    cudaDeviceProperties._obtain_from_device_its_properties();
+    cuda_device_properties::_obtain_from_device_its_properties();
     
     std::cout << "Declaration time in us " << t * 1000000 << std::endl;
     
@@ -129,14 +123,19 @@ int main(int argc, char **argv) {
  
     //std::cout << "lwork: " << lwork << std::endl;
     
-    cuLiNA::culina_matrix<double, 24, 1> workspace;
-    workspace._allocateMatrixDataMemory();
+    cuLiNA::culiopD_t culiopD;
+    
+    cuLiNA::culina_matrix<double, 24, 1> *workspace = new cuLiNA::culina_matrix<double, 24, 1>();
+    workspace->_allocateMatrixDataMemory();
+    
+    cudaMalloc ((void**)&culiopD.d_TAU, sizeof(double) * 4);
+    cudaMalloc ((void**)&culiopD.dev_info, sizeof(int));
+    
+    culiopD.workspace = workspace;
+    culiopD.cuLiNA_op_m1 = cuLiNA::CULINA_INVERSE_ON;
+    
 
-    double *d_tau;
-
-    cudaMalloc ((void**)&d_tau, sizeof(double) * 4);
-
-    cuLiNA::culina_matrix_Dmultiplication(&d_vector, &d_vector2, NULL, CUBLAS_OP_N, CUBLAS_OP_N, 1, 0, cuLiNA::CULINA_INVERSE_ON, cuLiNA::CULINA_INVERSE_OFF, &workspace, d_tau);
+    cuLiNA::culina_matrix_Dmultiplication(&d_vector, &d_vector2, NULL, culiopD);
 
     std::cout << std::endl;
     std::cout << std::endl;
@@ -185,8 +184,6 @@ int main(int argc, char **argv) {
 
 #endif
     
-    
-    
     cuLiNA::culina_matrix<double, 4, 2> identity_test;
     
     identity_test._setIdentity(nullptr);
@@ -206,7 +203,16 @@ int main(int argc, char **argv) {
     
     cusolverDnDgeqrf_bufferSize(cuSOLVER_wrapper::cusolver_wrapper::_getCusolverDn_handle(), 3, 3, test_m._getRawData(), 3, &Lwork );
     
-    std::cout << "QR fact buffersize for 4x4 double matrix: " << Lwork << std::endl;
+    std::cout << "QR fact buffersize for 3x3 double matrix: " << Lwork << std::endl;
+    
+//    std::cout << "Printing the static identity matrix from definition file" << std::endl;
+//
+//    for (int j = 0; j < identity4d._getRows(); j++) {
+//        for (int i = 0; i < identity4d._getColumns(); i++) {
+//            std::cout <<  identity4d._getData()[IDX2C(j, i, identity4d._getLeading_dimension())] << "\t";
+//        }
+//        printf("\n");
+//    }
     
     return 0;
     

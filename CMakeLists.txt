@@ -154,17 +154,24 @@ include_directories(
 #   src/${PROJECT_NAME}/cgmapping.cpp
 # )
 add_library(cgmapping_lib ${LIB_TYPE}
+
         include/cgmapping/state6D.h
+
         include/cgmapping/twist6D.h
         src/cgmapping/twist6D.cpp
+
         include/cgmapping/se3_lie_algebra_utils.h
         src/cgmapping/se3_lie_algebra_utils.cpp
+
         include/cgmapping/timer.h
+
         include/cgmapping/image_pyramid.h
         src/cgmapping/image_pyramid.cpp
-        src/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.cpp
+
         include/general_utils.h
-         src/general_utils.cpp)
+        src/general_utils.cpp
+
+        )
 
 
 cuda_add_library(cuda_aux_lib ${LIB_TYPE}
@@ -196,12 +203,15 @@ add_library(culina_lib ${LIB_TYPE}
 
         include/cuLiNA/culina_definition.h
 
-        include/cuLiNA/culina_data_types.h
+        include/cuLiNA/culina_error_data_types.h
 
         include/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h
+        src/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.cpp
 
         include/cuLiNA/culina_operations.h
         src/cuLiNA/culina_operations.cpp
+
+        include/cuLiNA/culina_operation_data_types.h
         )
 
 cuda_add_library(image_cuda_lib ${LIB_TYPE}
