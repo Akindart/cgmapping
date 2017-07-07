@@ -199,11 +199,3 @@ cgmapping::Vector6d cgmapping::logarithmic_map_se3(Matrix4d &homogenic_transform
     return twist_velocity;
     
 }
-
-void cgmapping::cuda::exponential_map_se3(culina_vector6d &d_twist_velocity,
-                                          culina_matrix4d &d_homogenic_transformation,
-                                          culina_matrix3d &d_auxiliar_matrix) {
-    
-    return ;
-    
-}
