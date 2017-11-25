@@ -2,7 +2,7 @@
 // Created by spades on 21/02/17.
 //
 
-#include "../../include/cgmapping/state6D.h"
+#include "cgmapping/state6D.h"
 
 bool cgmapping::state6D::_update_state(const cgmapping::state<tf::Transform> &delta_state) {
 

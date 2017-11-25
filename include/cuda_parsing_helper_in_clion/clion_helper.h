@@ -15,7 +15,7 @@
 inline void __syncthreads() {}
 inline void __threadfence_block() {}
 template<class T> inline T __clz(const T val) { return val; }
-struct __cuda_fake_struct { int x; };
+struct __cuda_fake_struct { int x; int y; int z;};
 extern __cuda_fake_struct blockDim;
 extern __cuda_fake_struct threadIdx;
 extern __cuda_fake_struct blockIdx;

@@ -41,14 +41,17 @@ cusolverStatus_t cusolver_wrapper::_start_cusolverDn_handle_wrapper() {
 }
 
 cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                               cuLiNA::culina_base_matrix<double> &workspace,
-                                                               double *TAU,
-                                                               int *devInfo) {
+                                                              cuLiNA::culina_base_matrix<double> &workspace,
+                                                              double *TAU,
+                                                              int *devInfo,
+                                                              cudaStream_t *strm) {
+    
+    if(strm != NULL)
+        cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);
+    else cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, 0);
     
     int m = result_matrix._getRows();
     int n = result_matrix._getColumns();
-    
-    
     
     return cusolverDnDgeqrf(cusolver_wrapper::cusolverDn_handle_,
                             m,
@@ -63,12 +66,18 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_ba
 };
 
 cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                          cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                          cuLiNA::culina_base_matrix<double> &workspace,
-                                                                          double *TAU,
-                                                                          int *devInfo,
-                                                                          cublasOperation_t op_m1,
-                                                                          cublasSideMode_t side) {
+                                                                         cuLiNA::culina_base_matrix<double> &result_matrix,
+                                                                         cuLiNA::culina_base_matrix<double> &workspace,
+                                                                         double *TAU,
+                                                                         int *devInfo,
+                                                                         cublasOperation_t op_m1,
+                                                                         cublasSideMode_t side,
+                                                                         cudaStream_t *strm) {
+    
+    if(strm != NULL)
+        cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);
+    else cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, 0);
+    
     int m = cu_matrix._getRows();
     int n = cu_matrix._getColumns();
     int k = result_matrix._getColumns();
@@ -81,7 +90,7 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA
                             side,
                             op_m1,
                             m,
-                            n,
+                            k,
                             m,
                             cu_matrix._getRawData(),
                             ld_cu_matrix,
@@ -93,6 +102,24 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA
                             devInfo);
     
 }
+
+cusolverStatus_t cusolver_wrapper::_cusolver_Dgeqrf_bufferSize(cuLiNA::culina_base_matrix<double> &cu_matrix,
+                                                              int *lwork,
+                                                              cudaStream_t *strm) {
+    
+    if(strm != NULL)
+        cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);
+    else cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, 0);
+    
+    return     cusolverDnDgeqrf_bufferSize(cuSOLVER_wrapper::cusolver_wrapper::_getCusolverDn_handle(),
+                                           cu_matrix._getRows(),
+                                           cu_matrix._getColumns(),
+                                           cu_matrix._getRawData(),
+                                           cu_matrix._getLeading_dimension(),
+                                           lwork);
+    
+};
+
 std::string cusolver_wrapper::_cusolver_wrapper_get_cusolver_error(cusolverStatus_t stat) {
     
     switch (stat) {
@@ -117,7 +144,7 @@ std::string cusolver_wrapper::_cusolver_wrapper_get_cusolver_error(cusolverStatu
     
 };
 
-void cusolver_wrapper::_cusolverCheckErrors(cusolverStatus_t stat, const std::string &file, const std::string &function) {
+void cusolver_wrapper::_cusolverCheckErrors(cusolverStatus_t stat, const std::string &file, const std::string &function, const int line) {
     
     if (stat != CUSOLVER_STATUS_SUCCESS) {
         
@@ -134,4 +161,4 @@ void cusolver_wrapper::_cusolverCheckErrors(cusolverStatus_t stat, const std::st
         
     }
     
-};
+}

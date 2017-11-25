@@ -2,10 +2,10 @@
 // Created by spades on 01/06/17.
 //
 
-#ifndef CGMAPPING_CUBLAS_WRAPPER_DEFINITION_H
-#define CGMAPPING_CUBLAS_WRAPPER_DEFINITION_H
+#ifndef CULINA_DEFINITION_H
+#define CULINA_DEFINITION_H
 
-#include "cuLiNA/culina_matrix.h"
+#include <cuLiNA/culina_matrix.h>
 #include <cuLiNA/culina_error_data_types.h>
 #include <cuLiNA/culina_operation_data_types.h>
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
@@ -38,9 +38,11 @@ namespace cuLiNA {
      * These declarations attack the necessity  of have a static const identity matrix to be used troughtou calculations
      *
      * */
-//    static culina_matrix3d identity3d(cuLiNA::IDENTITY);
-//    static culina_matrix4d identity4d(cuLiNA::IDENTITY);
+    static culina_matrix3d identity3d(cuLiNA::IDENTITY);
+    static culina_matrix4d identity4d(cuLiNA::IDENTITY);
+    static culina_vector4d auxiliar_vector4d; ///<-do not use this for calculation, this is only a temp storage vector
+    static culina_vector3d auxiliar_vector3d; ///<-do not use this for calculation, this is only a temp storage vector
     
 }
 
-#endif //CGMAPPING_CUBLAS_WRAPPER_DEFINITION_H
+#endif //CULINA_DEFINITION_H

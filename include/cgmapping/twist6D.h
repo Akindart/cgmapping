@@ -6,7 +6,7 @@
 #define CGMAPPING_STATE6D_H
 
 #include "cgmapping/state.h"
-#include "cgmapping/se3_lie_algebra_utils.h"
+#include "cgmapping/se3_lie_algebra_utils.cuh"
 
 using namespace Eigen;
 

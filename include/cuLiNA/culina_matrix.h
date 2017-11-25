@@ -14,61 +14,25 @@
 
 namespace cuLiNA {
     
-    template<typename T, int rows, int columns = rows, int leading_dimension = rows>
+    template<typename T, int rows = 0, int columns = rows, int leading_dimension = rows, typename Alloc = culina_matrix_allocator<T>>
     class culina_matrix : public culina_base_matrix<T> {
      
      public:
         
-        culina_matrix(matrix_advanced_initialization_t mai = NOTHING) : culina_base_matrix<T>(rows, columns, leading_dimension, mai) {};
+        culina_matrix(matrix_advanced_initialization_t mai = NOTHING) : culina_base_matrix<T, Alloc>(rows, columns, leading_dimension, mai) {};
         
         culina_matrix(thrust::device_vector<T> &data) : culina_base_matrix<T>(data,
                                                                               rows,
                                                                               columns,
                                                                               leading_dimension) {};
+    
+        culina_matrix(thrust::host_vector<T> &data) : culina_base_matrix<T>(data,
+                                                                              rows,
+                                                                              columns,
+                                                                              leading_dimension) {};
         
-        inline int _loadData(T *h_data) {
-            
-            cublasStatus_t stat;
-            
-            stat = cublasSetMatrix(culina_base_matrix<T>::_getRows(),
-                                   culina_base_matrix<T>::_getColumns(),
-                                   sizeof(*h_data),
-                                   h_data,
-                                   culina_base_matrix<T>::_getLeading_dimension(),
-                                   culina_base_matrix<T>::_getRawData(),
-                                   culina_base_matrix<T>::_getLeading_dimension());
-            if (stat != CUBLAS_STATUS_SUCCESS)
-                std::cout << "shit happens when loading a matrix" << std::endl;
-            
-            return 1;
-            
-        };
         
-        /***
-         *
-         * @param [in] h_data must've been pre-allocated outside this function and also be of the same
-         * type of the cuda_matrix it's receiving information from
-         *
-         * */
-        inline int _downloadData(T *h_data) {
-            
-            cublasStatus_t stat;
-            
-            stat = cublasGetMatrix(culina_base_matrix<T>::_getRows(),
-                                   culina_base_matrix<T>::_getColumns(),
-                                   sizeof(*h_data),
-                                   culina_base_matrix<T>::_getRawData(),
-                                   culina_base_matrix<T>::_getLeading_dimension(),
-                                   h_data,
-                                   culina_base_matrix<T>::_getLeading_dimension());
-            
-            if (stat != CUBLAS_STATUS_SUCCESS)
-                std::cout << "shit happens when downloading a matrix" << std::endl;
-            
-            return 1;
-            
-        }
-        
+    
     };
     
 }

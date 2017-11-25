@@ -44,7 +44,7 @@ namespace cuBLAS_wrapper {
          *
          *    - in case both are vectors the dot product is
          *
-         *        result_matrix = trans(cu_matrix1)*cu_matrix
+         *        result_matrix = trans(cu_matrix1)*cu_matrix2
          *
          *    - in case cu_matrix1 is a matrix and cu_matrix2 is a vector
          *
@@ -91,7 +91,8 @@ namespace cuBLAS_wrapper {
                                                       cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                       cublasOperation_t op_m2 = CUBLAS_OP_N,
                                                       double alpha = 1,
-                                                      double beta = 0);
+                                                      double beta = 0,
+                                                      cudaStream_t *strm = NULL);
         
         /***
          *
@@ -103,7 +104,7 @@ namespace cuBLAS_wrapper {
          *
          *    - in case both are vectors the dot product is
          *
-         *        result_matrix = trans(cu_matrix1)*cu_matrix
+         *        result_matrix = trans(cu_matrix1)*cu_matrix2
          *
          *    - in case cu_matrix1 is a matrix and cu_matrix2 is a vector
          *
@@ -150,19 +151,63 @@ namespace cuBLAS_wrapper {
                                                       cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                       cublasOperation_t op_m2 = CUBLAS_OP_N,
                                                       float alpha = 1,
-                                                      float beta = 0);
+                                                      float beta = 0,
+                                                      cudaStream_t *strm = NULL);
+    
+        //TODO: create comments explaining the function using doxygen format
+        static cublasStatus_t _cublas_Dsum(cuLiNA::culina_base_matrix<double> &cu_matrix1,
+                                           cuLiNA::culina_base_matrix<double> &cu_matrix2,
+                                           cuLiNA::culina_base_matrix<double> &result_matrix,
+                                           cublasOperation_t op_m1,
+                                           cublasOperation_t op_m2,
+                                           double alpha,
+                                           double beta,
+                                           cudaStream_t *strm);
+    
+        //TODO: create comments explaining the function using doxygen format
+        static cublasStatus_t _cublas_Ssum(cuLiNA::culina_base_matrix<float> &cu_matrix1,
+                                           cuLiNA::culina_base_matrix<float> &cu_matrix2,
+                                           cuLiNA::culina_base_matrix<float> &result_matrix,
+                                           cublasOperation_t op_m1,
+                                           cublasOperation_t op_m2,
+                                           float alpha,
+                                           float beta,
+                                           cudaStream_t *strm);
+    
+        //TODO: create comments explaining the function using doxygen format
+        static cublasStatus_t _cublas_Ddiag_multiplication(cuLiNA::culina_base_matrix<double> &cu_matrix,
+                                                           cuLiNA::culina_base_matrix<double> &diag_matrix,
+                                                           cuLiNA::culina_base_matrix<double> &result_matrix,
+                                                           cublasSideMode_t mode,
+                                                           cudaStream_t *strm);
+    
+        //TODO: create comments explaining the function using doxygen format
+        static cublasStatus_t _cublas_Dinverse(cuLiNA::culina_base_matrix<double> &cu_matrix,
+                                               cuLiNA::culina_base_matrix<double> &result_matrix,
+                                               int *info,
+                                               cudaStream_t *strm);
         
         //TODO: create comments explaining the function using doxygen format
         static cublasStatus_t _cublas_Dtriangular_system_solver(cuLiNA::culina_base_matrix<double> &cu_matrix1,
                                                                 cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                double alpha = 1,
+                                                                double alpha,
                                                                 cublasSideMode_t side = CUBLAS_SIDE_LEFT,
                                                                 cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER,
                                                                 cublasOperation_t op_m1 = CUBLAS_OP_N,
-                                                                cublasDiagType_t diag = CUBLAS_DIAG_NON_UNIT);
+                                                                cublasDiagType_t diag = CUBLAS_DIAG_NON_UNIT,
+                                                                cudaStream_t *strm = NULL);
     
-        //TODO create a _cublasGetErrorString function
-        static void _cublasCheckErrors(cublasStatus_t stat, const std::string &file, const std::string &function);
+        //TODO: create comments explaining the function using doxygen format
+        static cublasStatus_t _cublas_Dnorm(cuLiNA::culina_base_matrix<double> &cu_matrix,
+                                            double *result,
+                                            cudaStream_t *strm = NULL);
+        
+        static std::string _cublasGetErrorString(cublasStatus_t stat);
+        
+        static void _cublasCheckErrors(cublasStatus_t stat,
+                                              const std::string &file,
+                                              const std::string &function,
+                                              const int line);
         
         static cublasHandle_t &_getCublas_handle() {
             return cublas_wrapper::cublas_handle_;
@@ -172,7 +217,7 @@ namespace cuBLAS_wrapper {
             return cublas_wrapper::stat_;
         }
         
-        virtual ~cublas_wrapper() {
+         ~cublas_wrapper() {
             
             cublasDestroy_v2(cublas_wrapper::cublas_handle_);
             

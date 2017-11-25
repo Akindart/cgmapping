@@ -28,6 +28,7 @@ cv::cuda::GpuMat &cgmapping::image_pyramid::_getImageMat(cgmapping::image_size_t
     else return this->d_octed_image_;
     
 }
+
 uchar *cgmapping::image_pyramid::_getImageData(cgmapping::image_size_t image_size) {
     
     if (image_size == cgmapping::ORIGINAL_SIZE)
@@ -41,16 +42,8 @@ uchar *cgmapping::image_pyramid::_getImageData(cgmapping::image_size_t image_siz
     else return nullptr;
     
 }
-int cgmapping::image_pyramid::_generate_pyramid(Mat &src_img) {
-    
-    this->d_original_sized_image_.upload(src_img);
-    cv::cuda::pyrDown(this->d_original_sized_image_, this->d_halfed_image_);
-    cv::cuda::pyrDown(this->d_halfed_image_, this->d_quatered_image_);
-    cv::cuda::pyrDown(this->d_quatered_image_, this->d_octed_image_);
-    
-    return 0;
-    
-}
+
+
 int cgmapping::image_pyramid::_generate_pyramid(Mat &src_img, cv::cuda::Stream &strm) {
     
     this->d_original_sized_image_.upload(src_img, strm);

@@ -39,8 +39,8 @@ namespace cgmapping {
     cv::cuda::GpuMat& _getImageMat(image_size_t image_size);
     uchar* _getImageData(image_size_t image_size);
 
-    int _generate_pyramid(Mat &src_img);
-    int _generate_pyramid(Mat &src_img, cv::cuda::Stream &strm);
+    //int _generate_pyramid(Mat &src_img);
+    int _generate_pyramid(Mat &src_img, cv::cuda::Stream &strm = cv::cuda::Stream::Null());
 
   };
 
