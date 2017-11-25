@@ -8,6 +8,7 @@
 #include <thrust/device_vector.h>
 #include <cuLiNA/culina_utils.cuh>
 #include <cuLiNA/culina_error_data_types.h>
+#include <cuLiNA/culina_template_matrix.h>
 
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
 
@@ -43,16 +44,16 @@ namespace cuLiNA {
     
     };
     
-    typedef enum {
-        
-        NOTHING,
-        IDENTITY,
-        DIAGONAL
-        
-    } matrix_advanced_initialization_t;
+//    typedef enum {
+//
+//        NOTHING,
+//        IDENTITY,
+//        DIAGONAL
+//
+//    } matrix_advanced_initialization_t;
     
     template<typename T, typename Alloc = culina_matrix_allocator<T> >
-    class culina_base_matrix {
+    class culina_base_matrix : public culina_tm<T>{
         
         int rows_;
         int columns_;
@@ -93,7 +94,7 @@ namespace cuLiNA {
             leading_dimension_ = leading_dimension;
             number_of_elements_ = rows_ * columns_;
 
-            cudaSetDevice(0);
+            //cudaSetDevice(0);
             
             if (mai == IDENTITY) {
                 
@@ -192,12 +193,21 @@ namespace cuLiNA {
             culina_base_matrix::number_of_elements_ = number_of_elements_;
         }
         
-        inline T *_getRawData() {
-            
+        inline T *_getRawData() override {
+
             return thrust::raw_pointer_cast(data_.data());
+
+        }
+    
+        inline T _getRawValue(int row, int column) const override {
+    
+            if(this->matrix_type_ == DIAGONAL)
+                return this->data_[IDX2C(row, 0, leading_dimension_)];
+    
+            return this->data_[IDX2C(row, column, leading_dimension_)];
             
         }
-        
+    
         inline thrust::device_vector<T, Alloc> &_getData() {
             
             return data_;
@@ -220,8 +230,8 @@ namespace cuLiNA {
             this->data_ = data;
         
         }
-        
-        inline matrix_advanced_initialization_t _getMatrix_type() const {
+    
+        inline matrix_advanced_initialization_t _getMatrix_type() const override {
             return matrix_type_;
         }
         
@@ -229,12 +239,16 @@ namespace cuLiNA {
             culina_base_matrix::matrix_type_ = matrix_type;
         
         }
+        
         inline int _allocateMatrixDataMemory() {
             
             if (!this->data_.empty()) this->data_.clear();
     
-            if(this->matrix_type_ != matrix_advanced_initialization_t::DIAGONAL)
+            if(this->matrix_type_ != matrix_advanced_initialization_t::DIAGONAL) {
+            
                 this->data_.reserve((uint) this->number_of_elements_);
+                
+            }
             else this->data_.reserve((uint) this->columns_);
     
             return 1;
@@ -261,7 +275,40 @@ namespace cuLiNA {
             return (rows_ == columns_);
             
         }
+    
+        inline bool _isEmpty() const override {
+           
+            return data_.empty();
         
+        }
+    
+        bool operator==(const culina_tm<T> &rhs) override {
+            
+            if(//!this->_isEmpty() && !rhs._isEmpty() &&
+                (this->_getRows() == rhs._getRows()) &&
+                (this->_getColumns() == rhs._getColumns()) &&
+                    (this->_getMatrix_type() == rhs._getMatrix_type())){
+    
+                
+                for (int i = 0; i < this->_getRows(); ++i) {
+                    for (int j = 0; j < this->_getColumns(); ++j) {
+                    
+                        if(abs(this->_getRawValue(i, j) - rhs._getRawValue(i, j)) > 0.001)  return false;
+                    
+                    }
+                }
+            
+            }
+            else{
+                
+                std::cout << "hereherer" << std::endl;
+                return false;
+                
+            }
+            
+            return true;
+        }
+    
         /***
          * Diagonal matrices will return always the diagonal element of the row indicated
          *
@@ -276,54 +323,40 @@ namespace cuLiNA {
         };
     
         
-//        inline int _loadData(T *h_data) {
-//
-//            cublasStatus_t stat;
-//
-//            //std::cout << __FUNCTION__ << std::endl;
-//
-//            data_.
-//
-//            stat = cublasSetMatrix(culina_base_matrix<T>::_getRows(),
-//                                   culina_base_matrix<T>::_getColumns(),
-//                                   sizeof(*h_data),
-//                                   h_data,
-//                                   culina_base_matrix<T>::_getLeading_dimension(),
-//                                   culina_base_matrix<T>::_getRawData(),
-//                                   culina_base_matrix<T>::_getLeading_dimension());
-//
-//            cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__);
-//
-//            return 1;
-//
-//        };
-//
-//        /***
-//         *
-//         * @param [in] h_data must've been pre-allocated outside this function and also be of the same
-//         * type of the cuda_matrix it's receiving information from
-//         *
-//         * */
-//        inline int _downloadData(T *h_data) {
-//
-//            cublasStatus_t stat;
-//
-//            stat = cublasGetMatrix(culina_base_matrix<T>::_getRows(),
-//                                   culina_base_matrix<T>::_getColumns(),
-//                                   sizeof(*h_data),
-//                                   culina_base_matrix<T>::_getRawData(),
-//                                   culina_base_matrix<T>::_getLeading_dimension(),
-//                                   h_data,
-//                                   culina_base_matrix<T>::_getLeading_dimension());
-//
-//            cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__);
-//
-//            if (stat != CUBLAS_STATUS_SUCCESS)
-//                std::cout << "shit happens when downloading a matrix" << std::endl;
-//
-//            return 1;
-//
-//        }
+        inline cudaError_t _loadData(T *h_data, int num_of_elements, cudaStream_t *strm = NULL) {
+
+            cudaError_t stat;
+
+            if(strm != NULL)
+                stat = cudaMemcpyAsync(_getRawData(), h_data, sizeof(T)*num_of_elements, cudaMemcpyHostToDevice, *strm);
+            else  cudaMemcpy(_getRawData(), h_data, sizeof(T)*num_of_elements, cudaMemcpyHostToDevice);
+            
+            cudaCheckErrors(stat, __FILE__, __FUNCTION__);
+
+            return stat;
+
+        };
+    
+        /***
+         *
+         * @param [in] h_data must've been pre-allocated outside this function and also be of the same
+         * type of the cuda_matrix it's receiving information from
+         *
+         * */
+        inline cudaError_t _downloadData(T *h_data, int num_of_elements, cudaStream_t *strm = NULL) {
+        
+            cudaError_t stat;
+        
+            if(strm != NULL)
+                stat = cudaMemcpyAsync(h_data,_getRawData(), sizeof(T)*num_of_elements, cudaMemcpyDeviceToHost, *strm);
+            else  cudaMemcpy(h_data,_getRawData(), sizeof(T)*num_of_elements, cudaMemcpyDeviceToHost);
+        
+            cudaCheckErrors(stat, __FILE__, __FUNCTION__);
+        
+            return stat;
+        
+        };
+
         
         void _printMatrix(bool print_matrix_content = true, bool print_matrix_info = false) {
             

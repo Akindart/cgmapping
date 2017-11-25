@@ -8,9 +8,9 @@ using namespace cuLiNA;
 using namespace cuSOLVER_wrapper;
 using namespace cuBLAS_wrapper;
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(cuLiNA::culina_base_matrix<double> *cu_matrix1,
-                                                             cuLiNA::culina_base_matrix<double> *cu_matrix2,
-                                                             cuLiNA::culina_base_matrix<double> *cu_matrix3,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_tm<double> *cu_matrix1,
+                                                             culina_tm<double> *cu_matrix2,
+                                                             culina_tm<double> *cu_matrix3,
                                                              cuLiNA::culiopD_t &culiopD) {
     
     /***
@@ -21,7 +21,7 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(cuLiNA::culina_base
     * */
     if (culiopD.cuLiNA_op_m1 == CULINA_INVERSE_ON) {
         
-        culina_base_matrix<double> *workspace = culiopD.workspace;
+        culina_tm<double> *workspace = culiopD.workspace;
         
         cublasStatus_t cublas_stat = CUBLAS_STATUS_SUCCESS;
         cusolverStatus_t cusolver_stat1 = CUSOLVER_STATUS_SUCCESS;
@@ -113,7 +113,7 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(cuLiNA::culina_base
          *
          *
          * */
-        if (cu_matrix2->_getMatrix_type() == cuLiNA::matrix_advanced_initialization_t::DIAGONAL) {
+        if (cu_matrix2->    _getMatrix_type() == cuLiNA::matrix_advanced_initialization_t::DIAGONAL) {
         
             cuLiNA::cuLiNA_error_t culina_stat;
             
@@ -166,7 +166,7 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(cuLiNA::culina_base
     
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dnorm(cuLiNA::culina_base_matrix<double> *cu_matrix1,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dnorm(culina_tm<double> *cu_matrix1,
                                             double *result,
                                             cuLiNA::culiopD_t &culiopD) {
     
@@ -181,96 +181,24 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dnorm(cuLiNA::culina_base_matrix<double> *
     
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dsum(cuLiNA::culina_base_matrix<double> *cu_matrix1,
-                                                  cuLiNA::culina_base_matrix<double> *cu_matrix2,
-                                                  cuLiNA::culina_base_matrix<double> *cu_matrix3,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dsum(culina_tm<double> *cu_matrix1,
+                                                  culina_tm<double> *cu_matrix2,
+                                                  culina_tm<double> *cu_matrix3,
                                                   cuLiNA::culiopD_t &culiopD) {
     
-    double alpha = culiopD.alpha;
-    double beta = culiopD.beta;
-    double gamma = culiopD.gamma;
+    cublasStatus_t stat;
     
-    cuLiNA::cuLiNA_error_t culina_stat;
+    stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(*cu_matrix1,
+                                                        *cu_matrix2,
+                                                        *cu_matrix3,
+                                                        culiopD.op_m1,
+                                                        culiopD.op_m2,
+                                                        culiopD.alpha,
+                                                        culiopD.beta,
+                                                        culiopD.strm);
     
-    double *matrix1, *matrix2, *matrix3;
-    int rows[3], cols[3], ld[3];
-    
-    bool transpose_m1 = false;
-    bool transpose_m2 = false;
-    
-    if (cu_matrix3 == nullptr) {
-        
-        culina_stat = cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
-        
-        cuLiNA::cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
-        assert(culina_stat == cuLiNA::CULINA_SUCCESS);
-        
-        return CULINA_SUCCESS;
-        
-    }
-    
-    if (cu_matrix1 == nullptr) {
-        
-        matrix1 = nullptr;
-        rows[0] = cu_matrix3->_getRows();
-        cols[0] = cu_matrix3->_getColumns();
-        ld[0] = cu_matrix3->_getLeading_dimension();
-        alpha = 0;
-        
-    } else {
-        
-        matrix1 = cu_matrix1->_getRawData();
-        rows[0] = cu_matrix1->_getRows();
-        cols[0] = cu_matrix1->_getColumns();
-        ld[0] = cu_matrix1->_getLeading_dimension();
-        
-    }
-    if (cu_matrix2 == nullptr) {
-        
-        matrix2 = nullptr;
-        rows[1] = cu_matrix3->_getRows();
-        cols[1] = cu_matrix3->_getColumns();
-        ld[1] = cu_matrix3->_getLeading_dimension();
-        beta = 0;
-        
-    } else {
-        
-        matrix2 = cu_matrix2->_getRawData();
-        rows[1] = cu_matrix2->_getRows();
-        cols[1] = cu_matrix2->_getColumns();
-        ld[1] = cu_matrix2->_getLeading_dimension();
-        
-    }
-    
-    matrix3 = cu_matrix3->_getRawData();
-    rows[2] = cu_matrix3->_getRows();
-    cols[2] = cu_matrix3->_getColumns();
-    ld[2] = cu_matrix3->_getLeading_dimension();
-    
-    if (culiopD.op_m1 == CUBLAS_OP_T) transpose_m1 = true;
-    if (culiopD.op_m2 == CUBLAS_OP_T) transpose_m2 = true;
-    
-    culina_stat = culina_Dsumm(matrix1,
-                               transpose_m1,
-                               alpha,
-                               rows[0],
-                               cols[0],
-                               ld[0],
-                               matrix2,
-                               transpose_m2,
-                               beta,
-                               rows[1],
-                               cols[1],
-                               ld[1],
-                               matrix3,
-                               gamma,
-                               rows[2],
-                               cols[2],
-                               ld[2],
-                               culiopD.strm);
-    
-    cuLiNA::cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
-    assert(culina_stat == cuLiNA::CULINA_SUCCESS);
+    cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    assert(stat == cublasStatus_t::CUBLAS_STATUS_SUCCESS);
     
     return CULINA_SUCCESS;
     
@@ -308,10 +236,10 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dsum(cuLiNA::culina_base_matrix<dou
      *
      *
      * */
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina_base_matrix<double> *jacobian,
-                                                                          culina_base_matrix<double> *delta,
-                                                                          culina_base_matrix<double> *data,
-                                                                          culina_base_matrix<double> *weight,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina_tm<double> *jacobian,
+                                                                          culina_tm<double> *delta,
+                                                                          culina_tm<double> *data,
+                                                                          culina_tm<double> *weight,
                                                                           cuLiNA::culiopD_t &culiopD_1,
                                                                           cuLiNA::culiopD_t &culiopD_2,
                                                                           cuLiNA::culiopD_t &culiopD_3) {
@@ -425,8 +353,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina
     
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dcreate_buffer(culina_base_matrix<double> &target_matrix,
-                                                     culina_base_matrix<double> &buffer,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dcreate_buffer(culina_tm<double> &target_matrix,
+                                                     culina_tm<double> &buffer,
                                                      cuLiNA_buffer_t buffer_t) {
 
     int lwork;
@@ -458,8 +386,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dcreate_buffer(culina_base_matrix<double> 
 
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dskew_matrix3x3_operator(culina_base_matrix<double> *vector,
-                                                               culina_base_matrix<double> *result_matrix,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dskew_matrix3x3_operator(culina_tm<double> *vector,
+                                                               culina_tm<double> *result_matrix,
                                                                cuLiNA::culiopD_t &culiopD) {
     
     
@@ -481,8 +409,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dskew_matrix3x3_operator(culina_base_matri
     return stat;
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dblock_assignment_operation(culina_base_matrix<double> *cu_matrix,
-                                                                  culina_base_matrix<double> *cu_matrix_result,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dblock_assignment_operation(culina_tm<double> *cu_matrix,
+                                                                  culina_tm<double> *cu_matrix_result,
                                                                   int n_row_m_init,
                                                                   int n_column_m_init,
                                                                   int n_row_result_init,
@@ -514,8 +442,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dblock_assignment_operation(culina_base_ma
 
 }
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_to_vector_operation(culina_base_matrix<double> *cu_matrix,
-                                                                    culina_base_matrix<double> *cu_vector_result,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_to_vector_operation(culina_tm<double> *cu_matrix,
+                                                                    culina_tm<double> *cu_vector_result,
                                                                     culiopD_t &culiopD) {
     
     if(cu_matrix == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
@@ -534,8 +462,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_to_vector_operation(culina_base_
 }
 
 
-cuLiNA::cuLiNA_error_t cuLiNA::culina_Dtrace_operation(culina_base_matrix<double> *cu_matrix,
-                                                       culina_base_matrix<double> *cu_auxiliar_vector,
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dtrace_operation(culina_tm<double> *cu_matrix,
+                                                       culina_tm<double> *cu_auxiliar_vector,
                                                        double &result,
                                                        culiopD_t &culiopD) {
     

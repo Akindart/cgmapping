@@ -36,7 +36,6 @@ find_package(CUDA REQUIRED)
 #set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_DEF=1" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_DEF=1" )
 
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG")
 
@@ -47,6 +46,8 @@ set(CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
 set(LIB_TYPE STATIC include/cuda_parsing_helper_in_clion/clion_helper.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_DEF=1" )
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_DEF=1" )
+
+set(gtest_SOURCE_DIR /home/spades/googletest-master)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -155,6 +156,8 @@ include_directories(
         ${CUDA_INCLUDE_DIRS}
         ${CUDA_CUDART_LIBRARY}
         ${EIGEN_INCLUDE_DIRS}
+        ${gtest_SOURCE_DIR}/include
+        ${gtest_SOURCE_DIR}
 )
 
 ## Declare a C++ library
@@ -271,6 +274,8 @@ cuda_add_executable(twist_coord_test_node src/tests/lie_algebra_twist_coord_test
 
 cuda_add_executable(cublas_wrapper_test_node src/tests/cublas_wrapper_test/cublas_wrapper_test_node.cpp)
 
+cuda_add_executable(basic_matrix_tests src/tests/basic_matrix_tests.cpp)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 #add_dependencies(cgmapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${LINE_PROFILER_CU_O})
@@ -279,6 +284,7 @@ add_dependencies(image_pyramid_test_node image_cuda_lib cuda_aux_lib cgmapping_l
 add_dependencies(image_residuals_test_node cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib )
 add_dependencies(twist_coord_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
 add_dependencies(cublas_wrapper_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
+add_dependencies(basic_matrix_tests cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(cgmapping_node
@@ -364,6 +370,34 @@ target_link_libraries(image_residuals_test_node
 
 
 )
+
+target_link_libraries(basic_matrix_tests
+                      ${catkin_LIBRARIES}
+                      
+                      cgmapping_lib
+                      cgmapping_cuda_lib
+                      cuda_aux_lib
+
+
+                      culina_lib
+                      culina_kernels_lib
+
+                      gtest
+                      gtest_main
+                      
+                      ${OpenCV_LIBRARIES}
+                      #libraries for parallel linear algebra computing
+                      #-L/usr/local/cuda-8.0/lib64/
+                      -L/home/spades/cuda-8.0/lib64/
+                      -lcublas
+                      -lcublas_device
+                      -lcudart
+                      -lcusolver
+                      -fopenmp
+                      ${CUDA_LIBRARIES}
+
+
+                      )
 
 #############
 ## Install ##

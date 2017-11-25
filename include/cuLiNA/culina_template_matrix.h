@@ -19,8 +19,7 @@ namespace cuLiNA {
     } matrix_advanced_initialization_t;
     
     template<typename T>
-    typedef
-    class culina_template_matrix {
+    class culina_tm { //culina_template_matrix
      
      public:
         
@@ -42,15 +41,21 @@ namespace cuLiNA {
         
         virtual inline T *_getRawData() = 0;
         
+        virtual inline T _getRawValue(int row, int column) const = 0;
+        
         virtual inline matrix_advanced_initialization_t _getMatrix_type() const = 0;
         
         virtual inline void _setMatrix_type(matrix_advanced_initialization_t matrix_type) = 0;
         
-        virtual inline int _allocateMatrixDataMemory()  = 0;
-        
         virtual inline cuLiNA::cuLiNA_error_t _setIdentity(cudaStream_t *strm = NULL) = 0;
         
+        virtual inline int _allocateMatrixDataMemory()  = 0;
+        
         virtual inline bool _isSquare() = 0;
+        
+        virtual inline  bool _isEmpty() const = 0;
+        
+        virtual inline bool operator==(const culina_tm<T>& rhs) = 0;
         
         virtual inline cudaError_t _loadData(T *h_data, int num_of_elements, cudaStream_t *strm = NULL) {};
         
@@ -61,7 +66,7 @@ namespace cuLiNA {
         //virtual int _getTrace(cudaStream_t *strm = NULL)=0;
         
         
-    } culina_tm;
-
+    };
+    
 }
 #endif //CULINA_TEMPLATE_MATRIX_H

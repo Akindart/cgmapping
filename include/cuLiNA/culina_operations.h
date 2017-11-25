@@ -25,12 +25,12 @@ namespace cuLiNA {
      *
      * */
     //TODO: generate comments, and add option to invert cu_matrix1 or cu_matrix2 before multiplication procedure
-    extern cuLiNA::cuLiNA_error_t culina_matrix_Dmultiplication(cuLiNA::culina_base_matrix<double> *cu_matrix1,
-                                                                cuLiNA::culina_base_matrix<double> *cu_matrix2,
-                                                                cuLiNA::culina_base_matrix<double> *cu_matrix3,
-                                                                cuLiNA::culiopD_t& culiopD = culiopD_default);
+    extern cuLiNA::cuLiNA_error_t culina_matrix_Dmultiplication(culina_tm<double> *cu_matrix1,
+                                                                culina_tm<double> *cu_matrix2,
+                                                                culina_tm<double> *cu_matrix3,
+                                                                cuLiNA::culiopD_t &culiopD = culiopD_default);
     
-    extern cuLiNA::cuLiNA_error_t culina_Dnorm(cuLiNA::culina_base_matrix<double> *cu_matrix1,
+    extern cuLiNA::cuLiNA_error_t culina_Dnorm(culina_tm<double> *cu_matrix1,
                                                double *result,
                                                cuLiNA::culiopD_t &culiopD = culiopD_default);
     
@@ -38,12 +38,16 @@ namespace cuLiNA {
      *
      *  m3 = alpha*m1 + beta*m2 + gamma*m3
      *
+     *  new version
+     *
+     *  m3 = alpha*op(m1) + beta*op(m2)
+     *
      * */
-    extern cuLiNA::cuLiNA_error_t culina_matrix_Dsum(cuLiNA::culina_base_matrix<double> *cu_matrix1,
-                                              cuLiNA::culina_base_matrix<double> *cu_matrix2,
-                                              cuLiNA::culina_base_matrix<double> *cu_matrix3,
-                                              cuLiNA::culiopD_t& culiopD = culiopD_default);
-    
+    extern cuLiNA::cuLiNA_error_t culina_matrix_Dsum(culina_tm<double> *cu_matrix1,
+                                                     culina_tm<double> *cu_matrix2,
+                                                     culina_tm<double> *cu_matrix3,
+                                                     cuLiNA::culiopD_t &culiopD = culiopD_default);
+
     /***
      *
      * This function is a little bit complex, observe that here we are dealing with the following system
@@ -71,10 +75,10 @@ namespace cuLiNA {
      *
      * */
     
-    extern cuLiNA::cuLiNA_error_t culina_Dsolve_gradient_descent_first_order(culina_base_matrix<double> *jacobian,
-                                                                             culina_base_matrix<double> *delta,
-                                                                             culina_base_matrix<double> *data,
-                                                                             culina_base_matrix<double> *weight,
+    extern cuLiNA::cuLiNA_error_t culina_Dsolve_gradient_descent_first_order(culina_tm<double> *jacobian,
+                                                                             culina_tm<double> *delta,
+                                                                             culina_tm<double> *data,
+                                                                             culina_tm<double> *weight,
                                                                              cuLiNA::culiopD_t &culiopD_1,
                                                                              cuLiNA::culiopD_t &culiopD_2,
                                                                              cuLiNA::culiopD_t &culiopD_3);
@@ -86,16 +90,16 @@ namespace cuLiNA {
     * one wants to be generated. Observe that buffer matrix has to be at least
     *
     * */
-    extern cuLiNA::cuLiNA_error_t culina_Dcreate_buffer(culina_base_matrix<double> &target_matrix,
-                                                        culina_base_matrix<double> &buffer,
+    extern cuLiNA::cuLiNA_error_t culina_Dcreate_buffer(culina_tm<double> &target_matrix,
+                                                        culina_tm<double> &buffer,
                                                         cuLiNA_buffer_t buffer_t);
     
-    extern cuLiNA::cuLiNA_error_t culina_Dskew_matrix3x3_operator(culina_base_matrix<double> *vector,
-                                                                  culina_base_matrix<double> *result_matrix,
+    extern cuLiNA::cuLiNA_error_t culina_Dskew_matrix3x3_operator(culina_tm<double> *vector,
+                                                                  culina_tm<double> *result_matrix,
                                                                   cuLiNA::culiopD_t &culiopD = culiopD_default);
     
-    extern cuLiNA::cuLiNA_error_t culina_Dblock_assignment_operation(culina_base_matrix<double> *cu_matrix,
-                                                                     culina_base_matrix<double> *cu_matrix_result,
+    extern cuLiNA::cuLiNA_error_t culina_Dblock_assignment_operation(culina_tm<double> *cu_matrix,
+                                                                     culina_tm<double> *cu_matrix_result,
                                                                      int n_row_m_init,
                                                                      int n_column_m_init,
                                                                      int n_row_result_init,
@@ -104,12 +108,12 @@ namespace cuLiNA {
                                                                      int n_columns,
                                                                      culiopD_t &culiopD = culiopD_default);
     
-    extern cuLiNA::cuLiNA_error_t culina_Ddiagonal_to_vector_operation(culina_base_matrix<double> *cu_matrix,
-                                                                       culina_base_matrix<double> *cu_vector_result,
+    extern cuLiNA::cuLiNA_error_t culina_Ddiagonal_to_vector_operation(culina_tm<double> *cu_matrix,
+                                                                       culina_tm<double> *cu_vector_result,
                                                                        culiopD_t &culiopD = culiopD_default);
     
-    extern cuLiNA::cuLiNA_error_t culina_Dtrace_operation(culina_base_matrix<double> *cu_matrix,
-                                                          culina_base_matrix<double> *cu_auxiliar_vector,
+    extern cuLiNA::cuLiNA_error_t culina_Dtrace_operation(culina_tm<double> *cu_matrix,
+                                                          culina_tm<double> *cu_auxiliar_vector,
                                                           double &result,
                                                           culiopD_t &culiopD = culiopD_default);
     
@@ -132,7 +136,8 @@ namespace cuLiNA {
      *
     */
     template<typename T, typename Alloc = culina_matrix_allocator<T> >
-    cuLiNA::cuLiNA_error_t culina_load_matrix_file(culina_base_matrix<T, Alloc> &cu_matrix, std::string &matrix_file_name){
+    cuLiNA::cuLiNA_error_t culina_load_matrix_file(culina_base_matrix<T, Alloc> &cu_matrix,
+                                                   std::string &matrix_file_name){
         
         thrust::host_vector<T>  matrix_data((uint) cu_matrix._getNumber_of_elements());
     

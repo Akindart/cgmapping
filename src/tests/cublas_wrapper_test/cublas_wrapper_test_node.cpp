@@ -107,9 +107,9 @@ int main(int argc, char **argv) {
     //cublasSetPointerMode_v2(cuBLAS_wrapper::cublas_wrapper::_getCublas_handle(), CUBLAS_POINTER_MODE_DEVICE);
     
     //cublas_wrapper::_cublas_set_matrix<double>(a, d_vector);
-    d_norm_test._loadData(vectorT);
-    d_vector._loadData(a);
-    d_vector2._loadData(b);
+    d_norm_test._loadData(vectorT, 0, nullptr);
+    d_vector._loadData(a, 0, nullptr);
+    d_vector2._loadData(b, 0, nullptr);
     
     cuLiNA::culina_Dnorm(&d_norm_test, &result);
 
