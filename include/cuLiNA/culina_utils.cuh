@@ -6,12 +6,19 @@
 #define CGMAPPING_CUBLAS_WRAPPER_UTILS_H
 
 #include <iostream>
-#include <cuda_parsing_helper_in_clion/clion_helper.h>
+
 #include <vector_types.h>
+
 #include <cuLiNA/culina_error_data_types.h>
-#include <cuda_device_properties/gpu_cuda_device_properties.h>
 #include <cuLiNA/culina_utils_kernels.cuh>
+#include <cuLiNA/culina_matrix_allocator.h>
+
 #include <thrust/execution_policy.h>
+#include <thrust/device_vector.h>
+
+#include <cuda_device_properties/gpu_cuda_device_properties.h>
+
+#include <cuda_parsing_helper_in_clion/clion_helper.h>
 
 namespace cuLiNA {
     
@@ -26,6 +33,19 @@ namespace cuLiNA {
     
     __host__
     extern cuLiNA::cuLiNA_error_t set_Didentity_matrix(double *d_matrix,
+                                                       int n_rows,
+                                                       int n_columns,
+                                                       cudaStream_t *strm = NULL);
+    
+    __host__
+    extern cuLiNA::cuLiNA_error_t set_Ddiagonal_value_matrix(double *d_matrix,
+                                                             int n_rows,
+                                                             int n_columns,
+                                                             double value,
+                                                             cudaStream_t *strm);
+    
+    __host__
+    extern cuLiNA::cuLiNA_error_t set_Dzero_matrix(double *d_matrix,
                                                        int n_rows,
                                                        int n_columns,
                                                        cudaStream_t *strm = NULL);
@@ -78,6 +98,17 @@ namespace cuLiNA {
                                                                   int n_columns_result,
                                                                   int ld_result,
                                                                   cudaStream_t *strm = NULL);
+    
+    __host__
+    extern cuLiNA::cuLiNA_error_t culina_Dvector_from_skew_matrix3x3_operator(double *d_skew_matrix,
+                                                                              double alpha,
+                                                                              int n_rows_matrix,
+                                                                              int n_columns_matrix,
+                                                                              int ld_matrix,
+                                                                              double *d_vector_result,
+                                                                              int n_rows_vector,
+                                                                              int ld_vector,
+                                                                              cudaStream_t *strm = NULL);
     
     __host__
     extern cuLiNA::cuLiNA_error_t culina_Dblock_assingment(double *d_matrix1,
@@ -134,6 +165,16 @@ namespace cuLiNA {
                                                                            double *d_result_vector);
     
     
+//    template <typename T, typename Alloc = thrust::device_malloc_allocator<T>>
+//    cuLiNA::cuLiNA_error_t vector_resize(thrust::device_vector<T, Alloc>& vec, size_t new_vec_size, const T value = 0){
+//
+//        vec.resize(new_vec_size, value);
+//
+//        return CULINA_SUCCESS;
+//
+//    };
+    
+
 }
 
 #endif //CGMAPPING_CUBLAS_WRAPPER_UTILS_H

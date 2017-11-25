@@ -278,8 +278,8 @@ int main(int argc, char **argv) {
     culiopD_3.workspace->_allocateMatrixDataMemory();
     
     cuLiNA::culina_Dcreate_buffer(*(culiopD_3.workspace), *(culiopD_1.workspace), cuLiNA::cuLiNA_buffer_t::GEQRF_BUFFER);
-    cudaCheckErrors(cudaMallocManaged(&culiopD_1.d_TAU, sizeof(double) * m), __FILE__, __FUNCTION__);
-    cudaCheckErrors(cudaMallocManaged(&culiopD_1.dev_info, sizeof(int)), __FILE__, __FUNCTION__);
+    cudaCheckErrors(cudaMallocManaged(&culiopD_1.d_TAU, sizeof(double) * m), __FILE__, __FUNCTION__, 0);
+    cudaCheckErrors(cudaMallocManaged(&culiopD_1.dev_info, sizeof(int)), __FILE__, __FUNCTION__, 0);
     
     cuLiNA::culina_matrix<double> data;
     cuLiNA::culina_matrix<double> jacobian;

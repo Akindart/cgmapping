@@ -20,9 +20,17 @@ class Timer {
  public:
   Timer() : beg_(clock_::now()) {}
   void reset() { beg_ = clock_::now(); }
-  double elapsed() const {
-    return std::chrono::duration_cast<second_>
+  double elapsed_in_sec() const {
+      return std::chrono::duration_cast<second_>
         (clock_::now() - beg_).count();
+  }
+  double elapsed_in_msec() const {
+      return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count()*1000;
+  }
+  double elapsed_in_nsec() const {
+      return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count()*1000000;
   }
 
 };

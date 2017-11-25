@@ -6,10 +6,12 @@
 #define CGMAPPING_CUBLAS_MAT_H
 
 #include <iostream>
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#include <cuLiNA/culina_base_matrix.h>
 #include <cublas_v2.h>
+
+#include <cuLiNA/culina_base_matrix.h>
 #include <cuLiNA/cuBLAS_wrapper/cublas_wrapper.h>
 
 namespace cuLiNA {
@@ -30,9 +32,33 @@ namespace cuLiNA {
                                                                               rows,
                                                                               columns,
                                                                               leading_dimension) {};
-        
-        
     
+        culina_tm<T> &operator=(const culina_tm<T> &rhs) {
+
+            return culina_tm<T>::operator=(rhs);
+            
+//            if (this->_getRows() == rhs._getRows() &&
+//                this->_getColumns() == rhs._getColumns() &&
+//                this->_getLeading_dimension() == rhs._getLeading_dimension() &&
+//                this->_getNumber_of_elements() == rhs._getNumber_of_elements()) {
+//
+//                if (this->_getRawData() == const_cast<cuLiNA::culina_tm<T> &>(rhs)._getRawData())
+//                    return *this;
+//
+//                auto stat = cudaMemcpyAsync((void *) this->_getRawData(),
+//                                            (const void *) const_cast<cuLiNA::culina_tm<T> *>(&rhs)->_getRawData(),
+//                                            sizeof(T) * this->_getNumber_of_elements(),
+//                                            cudaMemcpyDeviceToDevice,
+//                                            NULL);
+//                cudaCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+//
+//            }
+//
+//            return *this;
+
+        }
+
+
     };
     
 }

@@ -6,439 +6,312 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-Matrix3d cgmapping::exponential_map_so3(Vector3d &angular_velocity) {
+cuLiNA_error_t cgmapping::cuda::exponential_Dmap_se3(culina_vector3d &d_linear_velocity,
+                                                     culina_vector3d &d_angular_velocity,
+                                                     culina_matrix4d &d_homogenic_transformation,
+                                                     culiopD_t &culiopD_1,
+                                                     culiopD_t &culiopD_2,
+                                                     double time_elapsed) {
     
-    Matrix3d rotation_matrix;
+    if(culiopD_1.workspace==NULL) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
+    if(culiopD_2.workspace==NULL) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
     
-    rotation_matrix.setIdentity();
+    if(!culiopD_1.workspace->_isSquare()) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
+    if(!culiopD_2.workspace->_isSquare()) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
     
-    if (angular_velocity.norm() > 0) {
-        
-        double angular_velocity_norm = angular_velocity.norm();
-        double sin_ang_vel_norm = sin(angular_velocity_norm);
-        double sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
-        
-        double cos_ang_vel_norm = cos(angular_velocity_norm);
-        double one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm * angular_velocity_norm);
-        
-        Matrix3d identity, angular_velocity_skew_matrix;
-        
-        identity.setIdentity();
-        
-        angular_velocity_skew_matrix << 0, -angular_velocity(2, 0), angular_velocity(1, 0),
-            angular_velocity(2, 0), 0, -angular_velocity(0, 0),
-            -angular_velocity(1, 0), angular_velocity(0, 0), 0;
-        
-        rotation_matrix = identity + sin_over_norm * angular_velocity_skew_matrix +
-            one_minus_cos_over_norm_sqrd * angular_velocity_skew_matrix * angular_velocity_skew_matrix;
-        
-    }
+    if(culiopD_1.workspace->_getRows() != 3) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
+    if(culiopD_2.workspace->_getRows() != 3) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
     
-    return rotation_matrix;
+    auto angular_velocity_norm = time_elapsed;
     
-}
-
-Matrix3d cgmapping::exponential_map_so3(Vector3d &angular_velocity, double time_elapsed) {
+    //culina_matrix<double, 1, 1> tmp_angular_velocity_norm;
     
-    Vector3d angle_elapsed = angular_velocity * time_elapsed;
+    cuLiNA_error_t stat = cuLiNA::culina_Dnorm(&d_angular_velocity,
+                                               &angular_velocity_norm,
+                                               culiopD_1);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    return cgmapping::exponential_map_so3(angle_elapsed);
+//    angular_velocity_norm = tmp_angular_velocity_norm(0,0);
     
-}
-
-Vector3d cgmapping::logarithmic_map_so3(Matrix3d &rotation_matrix, double time_elapsed) {
-    
-    double sin_time_elapsed = sin(time_elapsed);
-    
-    Matrix3d skew_matrix_angular_velocity;
-    
-    Vector3d angular_velocity;
-    
-    angular_velocity << rotation_matrix(2, 1) - rotation_matrix(1, 2), rotation_matrix(0, 2) - rotation_matrix(2, 0),
-        rotation_matrix(1, 0) - rotation_matrix(0, 1);
-    
-    angular_velocity *= (1 / (2 * sin_time_elapsed));
-    
-    return angular_velocity;
-    
-}
-
-Vector3d cgmapping::logarithmic_map_so3(Matrix3d &rotation_matrix) {
-    
-    //as long as no time is informed we recur to variable phi
-    double phi;
-    double traceR_minus_one = rotation_matrix.trace() - 1.0;
-    double trR_min_one_over_two = traceR_minus_one / 2.0;
-    
-    phi = acos(trR_min_one_over_two);
-    
-    return cgmapping::logarithmic_map_so3(rotation_matrix, phi);
-    
-}
-
-Matrix4d cgmapping::exponential_map_se3(Vector6d &twist_velocity) {
-    
-    Matrix4d homogenic_transformation;
-    
-    homogenic_transformation.setIdentity();
-    
-    Vector3d angular_velocity;
-    Vector3d linear_velocity;
-    
-    angular_velocity << twist_velocity.tail(3);
-    linear_velocity << twist_velocity.head(3);
-    
-    if (angular_velocity.norm() > 0) {
-        
-        double angular_velocity_norm = angular_velocity.norm();
-        double angular_velocity_norm_sqrt = angular_velocity_norm * angular_velocity_norm;
-        double sin_ang_vel_norm = sin(angular_velocity_norm);
-        double sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
-        
-        double cos_ang_vel_norm = cos(angular_velocity_norm);
-        double one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm_sqrt);
-        
-        Matrix3d identity, angular_velocity_skew_matrix;
-        
-        identity.setIdentity();
-        
-        angular_velocity_skew_matrix << 0, -angular_velocity(2, 0), angular_velocity(1, 0),
-            angular_velocity(2, 0), 0, -angular_velocity(0, 0),
-            -angular_velocity(1, 0), angular_velocity(0, 0), 0;
-        
-        Matrix3d angular_velocity_skew_matrix_squared;
-        
-        angular_velocity_skew_matrix_squared = angular_velocity_skew_matrix * angular_velocity_skew_matrix;
-        
-        homogenic_transformation.block(0, 0, 3, 3) << identity + sin_over_norm * angular_velocity_skew_matrix +
-            one_minus_cos_over_norm_sqrd * angular_velocity_skew_matrix_squared;
-        
-        if (linear_velocity.norm() > 0) {
-            
-            homogenic_transformation.block(0, 3, 3, 1) << (identity +
-                one_minus_cos_over_norm_sqrd * angular_velocity_skew_matrix +
-                ((1 - sin_over_norm) / (angular_velocity_norm_sqrt)) * angular_velocity_skew_matrix_squared) *
-                linear_velocity;
-            
-        }
-        
-    } else homogenic_transformation.block(0, 3, 3, 1) << linear_velocity;
-    
-    return homogenic_transformation;
-    
-}
-
-Matrix4d cgmapping::exponential_map_se3(Vector6d &twist_velocity, double time_elapsed) {
-    
-    Vector6d twist_vel;
-    
-    twist_vel << twist_velocity * time_elapsed;
-    
-    return cgmapping::exponential_map_se3(twist_vel);
-    
-}
-
-cgmapping::Vector6d cgmapping::logarithmic_map_se3(Matrix4d &homogenic_transformation) {
-    
-    //as long as no time is informed we recur to variable phi
-    double phi;
-    double traceR_minus_one = homogenic_transformation.block(0, 0, 3, 3).trace() - 1.0;
-    double trR_min_one_over_two = traceR_minus_one / 2.0;
-    
-    phi = acos(trR_min_one_over_two);
-    
-    return cgmapping::logarithmic_map_se3(homogenic_transformation, phi);
-    
-}
-
-cgmapping::Vector6d cgmapping::logarithmic_map_se3(Matrix4d &homogenic_transformation, double time_elapsed) {
-    
-    Vector3d angular_velocity, linear_velocity;
-    Matrix3d rotation_matrix, angular_velocity_skew_matrix, angular_velocity_skew_matrix_sqrd;
-    
-    rotation_matrix << homogenic_transformation.block(0, 0, 3, 3);
-    
-    angular_velocity = cgmapping::logarithmic_map_so3(rotation_matrix, time_elapsed);
-    
-    angular_velocity_skew_matrix << 0, -angular_velocity(2, 0), angular_velocity(1, 0),
-        angular_velocity(2, 0), 0, -angular_velocity(0, 0),
-        -angular_velocity(1, 0), angular_velocity(0, 0), 0;
-    
-    angular_velocity_skew_matrix = angular_velocity_skew_matrix * time_elapsed;
-    
-    angular_velocity_skew_matrix_sqrd = angular_velocity_skew_matrix * angular_velocity_skew_matrix;
-    
-    Matrix3d identity;
-    
-    identity.setIdentity();
-    
-    double angular_velocity_norm = angular_velocity.norm();
-    double angular_velocity_norm_sqrd = angular_velocity_norm * angular_velocity_norm;
-    double sin_ang_vel_norm = sin(angular_velocity_norm);
-    double sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
-    
-    double cos_ang_vel_norm = cos(angular_velocity_norm);
-    double one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm_sqrd);
-    
-    Matrix3d V_inverse;
-    
-    V_inverse << identity - 0.5 * angular_velocity_skew_matrix +
-        (1 / angular_velocity_norm_sqrd) * (1 - (sin_over_norm / (2 * one_minus_cos_over_norm_sqrd))) *
-            angular_velocity_skew_matrix_sqrd;
-    
-    Vector3d translation;
-    
-    translation << homogenic_transformation.block(0, 3, 3, 1);
-    
-    linear_velocity = V_inverse * translation;
-    
-    linear_velocity = linear_velocity / time_elapsed;
-    
-    Vector6d twist_velocity;
-    
-    twist_velocity << linear_velocity, angular_velocity;
-    
-    return twist_velocity;
-    
-}
-
-void cgmapping::cuda::exponential_Dmap_se3(culina_vector3d &d_linear_velocity,
-                                           culina_vector3d &d_angular_velocity,
-                                           culina_matrix4d &d_homogenic_transformation,
-                                           culina_matrix3d &d_auxiliar_matrix1,
-                                           culina_matrix3d &d_auxiliar_matrix2,
-                                           culina_matrix3d &d_auxiliar_matrix3,
-                                           cudaStream_t *strm1,
-                                           cudaStream_t *strm2,
-                                           cudaStream_t *strm3,
-                                           double time_elapsed) {
-    
-    culiopD_t parameters;
-    parameters.alpha = time_elapsed;
-    parameters.strm = strm1;
-    
-    parameters.op_m1 = CUBLAS_OP_N;
-    parameters.op_m2 = CUBLAS_OP_N;
-    
-    d_homogenic_transformation._setIdentity();
-    
-    double angular_velocity_norm = 1;
-    
-    cuLiNA::culina_Dnorm((culina_base_matrix<double> *) &d_angular_velocity,
-                         &angular_velocity_norm,
-                         parameters);
+//    std::cout << "angular_velocity_norm = " << angular_velocity_norm << std::endl;
     
     if (angular_velocity_norm > 0) {
-        
-        double angular_velocity_norm_sqrd = angular_velocity_norm * angular_velocity_norm;
-        double sin_ang_vel_norm = sin(angular_velocity_norm);
-        double sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
-        
-        double cos_ang_vel_norm = cos(angular_velocity_norm);
-        double one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm_sqrd);
-        
-        double A = sin_over_norm;
-        double B = one_minus_cos_over_norm_sqrd;
-        double C = (1 - A)/(angular_velocity_norm_sqrd);
-        
-        cuLiNA_error_t stat;
     
-        //this matrix is a skew-matrix of the angular velocity;
-        stat = cuLiNA::culina_Dskew_matrix3x3_operator(&d_angular_velocity, &d_auxiliar_matrix1, parameters);
-        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+        angular_velocity_norm *= time_elapsed;
         
-//        d_auxiliar_matrix1(0, 0) = 0;
-//        d_auxiliar_matrix1(0, 1) = -d_angular_velocity(2, 0) * time_elapsed;
-//        d_auxiliar_matrix1(0, 2) = d_angular_velocity(1, 0) * time_elapsed;
-//        d_auxiliar_matrix1(1, 0) = d_angular_velocity(2, 0) * time_elapsed;
-//        d_auxiliar_matrix1(1, 1) = 0;
-//        d_auxiliar_matrix1(1, 2) = -d_angular_velocity(0, 0) * time_elapsed;
-//        d_auxiliar_matrix1(2, 0) = -d_angular_velocity(1, 0) * time_elapsed;
-//        d_auxiliar_matrix1(2, 1) = d_angular_velocity(0, 0) * time_elapsed;
-//        d_auxiliar_matrix1(2, 2) = 0;
+        auto angular_velocity_norm_sqrd = angular_velocity_norm * angular_velocity_norm;
+        auto sin_ang_vel_norm = sin(angular_velocity_norm);
+        auto sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
+    
+        auto cos_ang_vel_norm = cos(angular_velocity_norm);
+        auto one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm_sqrd);
+    
+        auto A = sin_over_norm;
+        auto B = one_minus_cos_over_norm_sqrd;
+        auto C = (1 - sin_over_norm)/(angular_velocity_norm_sqrd);
         
-        double alpha1 = sin_over_norm;
-        double alpha2 = one_minus_cos_over_norm_sqrd;
-        double alpha3 = (1 - alpha1) / angular_velocity_norm_sqrd;
-        
-        parameters.alpha = 1;
-        parameters.beta = 0;
-        parameters.gamma = 0;
-        
-        cuLiNA::culina_matrix_Dmultiplication((culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                              (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                              (culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                              parameters);
-        
-        parameters.alpha = 1;
-        parameters.beta = alpha1;
-        parameters.gamma = alpha2;
-        
-        cuLiNA::culina_matrix_Dsum((culina_base_matrix<double> *) &identity3d,
-                                   (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                   (culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                   parameters);
-        
-        for (int j = 0; j < d_auxiliar_matrix2._getRows(); ++j) {
+        if(angular_velocity_norm <= NEAR_ZERO_VALUE){
+    
+            auto theta = angular_velocity_norm;
+            auto theta_sqrd = angular_velocity_norm_sqrd;
             
-            for (int k = 0; k < d_auxiliar_matrix2._getColumns(); ++k) {
-                
-                d_homogenic_transformation(j, k) = d_auxiliar_matrix2(j, k);
-                
-            }
+            A = 1 - ((theta_sqrd/6)*(1 - (theta_sqrd/20)*(1 - (theta_sqrd/42))));
+            B = (0.5)*(1 - ((theta_sqrd/12)*(1 - (theta_sqrd/30)*(1 - (theta_sqrd/56)))));
+            C = (1./24.)*(1 - ((theta_sqrd/30)*(1 - (theta_sqrd/56)*(1 - (theta_sqrd/90)))));
             
         }
         
-        parameters.alpha = 1;
-        parameters.beta = 0;
-        parameters.gamma = 0;
+        culina_matrix3d skew_symmetric_matrix;
         
-        cuLiNA::culina_matrix_Dmultiplication((culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                              (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                              (culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                              parameters);
+        culiopD_1.alpha = time_elapsed;
         
-        parameters.alpha = 1;
-        parameters.beta = alpha2;
-        parameters.gamma = alpha3;
+        //this matrix is a skew-matrix of the angular velocity;
+        stat = cuLiNA::culina_Dskew_matrix3x3_operator(&d_angular_velocity, &skew_symmetric_matrix, culiopD_1);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        culiopD_1.workspace->_setIdentity(culiopD_1.strm);
+        culiopD_2.workspace->_setIdentity(culiopD_2.strm);
         
-        cuLiNA::culina_matrix_Dsum((culina_base_matrix<double> *) &identity3d,
-                                   (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                   (culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                   parameters);
+        d_homogenic_transformation._setIdentity();
         
-        //cudaDeviceSynchronize();
+        //workspace1 = I + A*skew_symmetric_matrix*I
+        culiopD_1.alpha = A;
+        culiopD_1.beta = 1;
+        stat = cuLiNA::culina_matrix_Dmultiplication(&skew_symmetric_matrix, culiopD_1.workspace, culiopD_1.workspace, culiopD_1);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        //workspace2 = I + B*skew_symmetric_matrix*I
+        culiopD_2.alpha = B;
+        culiopD_2.beta = 1;
+        stat = cuLiNA::culina_matrix_Dmultiplication(&skew_symmetric_matrix, culiopD_2.workspace, culiopD_2.workspace, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
         
-        parameters.alpha = time_elapsed;
-        parameters.beta = 0;
+        //workspace1 += B*skew_symmetric_matrix*skew_symmetric_matrix
+        culiopD_1.alpha = B;
+        culiopD_1.beta = 1;
+        stat = cuLiNA::culina_matrix_Dmultiplication(&skew_symmetric_matrix, &skew_symmetric_matrix, culiopD_1.workspace, culiopD_1);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        //workspace2 += C*skew_symmetric_matrix*skew_symmetric_matrix
+        culiopD_2.alpha = C;
+        culiopD_2.beta = 1;
+        stat = cuLiNA::culina_matrix_Dmultiplication(&skew_symmetric_matrix, &skew_symmetric_matrix, culiopD_2.workspace, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
         
-        int prev_columns = d_auxiliar_matrix1._getColumns();
+        stat = cuLiNA::culina_Dblock_assignment_operation(culiopD_1.workspace, &d_homogenic_transformation, 0, 0, 0, 0, 3, 3, culiopD_1);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
         
-        d_auxiliar_matrix1._setColumns(1);
-        
-        cuLiNA::culina_matrix_Dmultiplication((culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                              (culina_base_matrix<double> *) &d_linear_velocity,
-                                              (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                              parameters);
-        
-        //cudaDeviceSynchronize();
-        
-        d_homogenic_transformation(0, 3) = d_auxiliar_matrix1(0, 0);
-        d_homogenic_transformation(1, 3) = d_auxiliar_matrix1(1, 0);
-        d_homogenic_transformation(2, 3) = d_auxiliar_matrix1(2, 0);
-        
-        d_auxiliar_matrix1._setColumns(prev_columns);
+        //morph skew_symmetric_matrix to a column vector and perform
+        //skew_symmetric_matrix = workspace2*linear_vel
+        skew_symmetric_matrix._setRows(3);
+        skew_symmetric_matrix._setColumns(1);
+        culiopD_2.alpha = time_elapsed;
+        culiopD_2.beta = 0;
+        stat = cuLiNA::culina_matrix_Dmultiplication(culiopD_2.workspace, &d_linear_velocity, &skew_symmetric_matrix, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        stat = cuLiNA::culina_Dblock_assignment_operation(&skew_symmetric_matrix, &d_homogenic_transformation, 0, 0, 0, 3, 3, 1, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        skew_symmetric_matrix._setColumns(3);
         
     } else {
+    
+//        std::cout << "what the fuckinside" << std::endl;
         
-        d_homogenic_transformation(0, 3) = d_linear_velocity(0, 0) * time_elapsed;
-        d_homogenic_transformation(1, 3) = d_linear_velocity(1, 0) * time_elapsed;
-        d_homogenic_transformation(2, 3) = d_linear_velocity(2, 0) * time_elapsed;
+//        culiopD_1.workspace->_setIdentity(culiopD_1.strm);
+        d_homogenic_transformation._setIdentity(culiopD_2.strm);
+
+//        auto cuda_stat = cudaDeviceSynchronize();
+//        cudaCheckErrors(cuda_stat, __FILE__, __FUNCTION__, __LINE__);
+        
+//        std::cout << "what the fuck ////// inside" << std::endl;
+    
+//        cuda_stat = cudaDeviceSynchronize();
+//        cudaCheckErrors(cuda_stat, __FILE__, __FUNCTION__, __LINE__);
+
+//        std::cout << "what the fuck ----- inside" << std::endl;
+    
+//        auto cuda_stat = cudaDeviceSynchronize();
+//        cudaCheckErrors(cuda_stat, __FILE__, __FUNCTION__, __LINE__);
+        
+//        culina_vector3d tmp;
+        
+        culiopD_1.workspace->_setColumns(1);
+        
+        culiopD_2.alpha = time_elapsed;
+        culiopD_2.beta = 0;
+        stat = cuLiNA::culina_matrix_Dmultiplication(&identity3d, &d_linear_velocity, culiopD_1.workspace, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        stat = cuLiNA::culina_Dblock_assignment_operation(culiopD_1.workspace, &d_homogenic_transformation, 0, 0, 0, 3, 3, 1, culiopD_2);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        culiopD_1.workspace->_setColumns(3);
         
     }
+    
+    return stat;
     
 }
 
-void cgmapping::cuda::logarithmic_Dmap_se3(culina_vector3d &d_linear_velocity,
-                                           culina_vector3d &d_angular_velocity,
-                                           culina_matrix4d &d_homogenic_transformation,
-                                           culina_matrix3d &d_auxiliar_matrix1,
-                                           culina_matrix3d &d_auxiliar_matrix2,
-                                           cudaStream_t *strm,
-                                           double time_elapsed) {
+cuLiNA_error_t cgmapping::cuda::logarithmic_Dmap_se3(culina_matrix4d &d_homogenic_transformation,
+                                                     culina_vector3d &d_linear_velocity,
+                                                     culina_vector3d &d_angular_velocity,
+                                                     culiopD_t &culiopD,
+                                                     double time_elapsed) {
     
-    culiopD_t parameters;
-    parameters.strm = strm;
+    if(culiopD.workspace==NULL) return cuLiNA::CULINA_MATRIX_NOT_INSTANTIATED;
     
-    double phi;
+    if(!culiopD.workspace->_isSquare() && culiopD.workspace->_getRows() != 3) return cuLiNA::CULINA_PARAMETERS_MISMATCH;
     
-    //as long as no time is informed we recur to variable phi
-    double traceR = 0;
+    cuLiNA::cuLiNA_error_t stat;
     
-    for (int j = 0; j < 3; ++j) {
+    double R_trace;
+    
+    culiopD.op_m1 = CUBLAS_OP_N;
+    
+    stat = cuLiNA::culina_Dblock_assignment_operation(&d_homogenic_transformation, culiopD.workspace, 0, 0, 0, 0, 3, 3, culiopD);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat = cuLiNA::culina_Dblock_assignment_operation(&d_homogenic_transformation, &d_linear_velocity, 0, 3, 0, 0, 3, 1, culiopD);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+    culiopD.alpha  = 1;
+    culiopD.beta = 0;
+    culiopD.gamma = 0;
+    
+    stat = cuLiNA::culina_Dtrace_operation(culiopD.workspace, &d_angular_velocity, R_trace, culiopD);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+    double angular_velocity_norm = (R_trace - 1)/2;
+    
+    angular_velocity_norm = acos(angular_velocity_norm);
+    
+    double sin_ang_vel_norm = sin(angular_velocity_norm);
+    
+    if(angular_velocity_norm > 0) {
+    
+        culiopD.alpha = angular_velocity_norm/(2*sin_ang_vel_norm);
+        culiopD.beta = -culiopD.alpha;
+        culiopD.gamma = 0;
+        culiopD.op_m2 = CUBLAS_OP_T;
         
-        traceR += d_homogenic_transformation(j, j);
+//        ln(R) <-- (theta/(2*sin(theta))*(R - R^T)
+        stat = cuLiNA::culina_matrix_Dsum(culiopD.workspace, culiopD.workspace, culiopD.workspace, culiopD);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        culiopD.op_m2 = CUBLAS_OP_N;
         
+        culiopD.alpha = (1./time_elapsed);
+        culiopD.beta = 0;
+    
+        stat = cuLiNA::culina_Dvector_from_skew_matrix3x3_operator(culiopD.workspace, &d_angular_velocity, culiopD);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        double A = sin_ang_vel_norm/angular_velocity_norm;
+        double B = (1 - cos(angular_velocity_norm))/(angular_velocity_norm*angular_velocity_norm);
+    
+        if(angular_velocity_norm <= NEAR_ZERO_VALUE){
+        
+            auto theta = angular_velocity_norm;
+            auto theta_sqrd = theta*theta;
+    
+            culiopD.alpha = (1./12.)*(1 + ((theta_sqrd/60)*(1 + (theta_sqrd/42)*(1 + (theta_sqrd/40)))));
+        
+        }
+        else {
+    
+            culiopD.alpha = (1 / (angular_velocity_norm * angular_velocity_norm)) * (1 - (A / (2 * B)));
+            
+        }
+        
+        culiopD.beta = -0.5;
+        culiopD.gamma = 0;
+    
+        culiopD.op_m1 = CUBLAS_OP_N;
+        culiopD.op_m2 = CUBLAS_OP_N;
+    
+        stat = cuLiNA::culina_matrix_Dmultiplication(culiopD.workspace, culiopD.workspace, culiopD.workspace, culiopD);
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
     }
     
-    double traceR_minus_3_plus_2t = traceR - 3 + 2 * time_elapsed;
-    double trR_minus_3p2t_over_2tt = traceR_minus_3_plus_2t / (2.0 * time_elapsed * time_elapsed);
+    else d_angular_velocity._setZero(culiopD.strm);
     
-    phi = acos(trR_minus_3p2t_over_2tt) / time_elapsed;
+    culiopD.alpha = 1;
+    culiopD.beta = 0;
+    culiopD.gamma = (angular_velocity_norm?1:0);
     
-    double phi_over_2sin_phi = phi / (2 * sin(phi));
+    stat = cuLiNA::culina_matrix_Dsum(&identity3d, NULL, culiopD.workspace, culiopD);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    parameters.alpha = phi_over_2sin_phi;
-    parameters.beta = -phi_over_2sin_phi;
-    parameters.op_m2 = CUBLAS_OP_T;
-    parameters.gamma = 0;
+    culiopD.alpha = (1/time_elapsed);
+    culiopD.beta = 0;
+    culiopD.gamma = 0;
     
-    for (int k = 0; k < 3; ++k)
-        for (int j = 0; j < 3; ++j)
-            d_auxiliar_matrix1(k, j) = d_homogenic_transformation(k, j);
+    stat = cuLiNA::culina_matrix_Dmultiplication(culiopD.workspace, &d_linear_velocity, &d_linear_velocity, culiopD);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    cuLiNA::cuLiNA_error_t culina_stat;
+    return stat;
     
-    culina_stat = cuLiNA::culina_matrix_Dsum(&d_auxiliar_matrix1, &d_auxiliar_matrix1, &d_auxiliar_matrix2, parameters);
-    cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
+}
+cuLiNA_error_t cgmapping::cuda::adjoint_Dse3(culina_matrix4d &d_homogenic_transformation,
+                                             culina_matrix<double, 6, 6> &d_adjoint_matrix,
+                                             culiopD_t &culiopD) {
     
-    d_angular_velocity(0, 0) = d_auxiliar_matrix2(2, 1) * (1 / time_elapsed);
-    d_angular_velocity(1, 0) = d_auxiliar_matrix2(0, 2);
-    d_angular_velocity(2, 0) = d_auxiliar_matrix2(1, 0);
+    if(culiopD.workspace == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
     
-    double angular_velocity_norm = 1;
+    if(!culiopD.workspace->_isSquare()) return CULINA_PARAMETERS_MISMATCH;
     
-    culina_stat = cuLiNA::culina_Dnorm((culina_base_matrix<double> *) &d_angular_velocity,
-                                       &angular_velocity_norm,
-                                       parameters);
-    cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
+    if(culiopD.workspace->_getRows() != 3) return CULINA_PARAMETERS_MISMATCH;
     
-    parameters.alpha = 1;
-    parameters.beta = -0.5 * phi;
-    parameters.gamma = 0;
-    parameters.op_m2 = CUBLAS_OP_N;
+    culiopD.alpha = 1;
+    culiopD.beta = culiopD.gamma = 0;
+    culiopD.op_m1 = culiopD.op_m2 = CUBLAS_OP_N;
+    culiopD.cuLiNA_op_m1 = culiopD.cuLiNA_op_m2 = CULINA_INVERSE_OFF;
     
-    culina_stat = cuLiNA::culina_matrix_Dsum(&identity3d, &d_auxiliar_matrix2, &d_auxiliar_matrix1, parameters);
+    auto stat = CULINA_SUCCESS;
     
-    parameters.alpha = 1;
-    parameters.beta = 0;
+    d_adjoint_matrix._setRows(3);
+    d_adjoint_matrix._setColumns(1);
     
-    culina_stat = cuLiNA::culina_matrix_Dmultiplication((culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                                        (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                                        (culina_base_matrix<double> *) &d_auxiliar_matrix1,
-                                                        parameters);
     
-    cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
+    // t <-- T(0:2, 3)
+    stat = culina_Dblock_assignment_operation(&d_homogenic_transformation, &d_adjoint_matrix, 0,3,0,0,3,1, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    double angular_velocity_norm_sqrd = angular_velocity_norm * angular_velocity_norm;
-    double sin_ang_vel_norm = sin(angular_velocity_norm);
-    double sin_over_norm = sin_ang_vel_norm / angular_velocity_norm;
+    //t_x <-- S(t)
+    stat = culina_Dskew_matrix3x3_operator(&d_adjoint_matrix, culiopD.workspace, culiopD);
     
-    double cos_ang_vel_norm = cos(angular_velocity_norm);
-    double one_minus_cos_over_norm_sqrd = (1 - cos_ang_vel_norm) / (angular_velocity_norm_sqrd);
+    d_adjoint_matrix._setRows(3);
+    d_adjoint_matrix._setColumns(3);
     
-    parameters.alpha = 1;
-    parameters.beta = (1 / angular_velocity_norm_sqrd) * (1 - (sin_over_norm / (2 * one_minus_cos_over_norm_sqrd)));
-    parameters.gamma = 0;
+    //adjoint(0:2,0:2) <-- T(R)
+    stat = culina_Dblock_assignment_operation(&d_homogenic_transformation, &d_adjoint_matrix, 0,0,0,0,3,3, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    culina_stat = cuLiNA::culina_matrix_Dsum(&d_auxiliar_matrix2, &d_auxiliar_matrix1, &d_auxiliar_matrix2, parameters);
-    cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
+    //t_x*R
+    stat = culina_matrix_Dmultiplication(culiopD.workspace, &d_adjoint_matrix, culiopD.workspace, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    d_linear_velocity(0, 0) = d_homogenic_transformation(0, 3);
-    d_linear_velocity(1, 0) = d_homogenic_transformation(1, 3);
-    d_linear_velocity(2, 0) = d_homogenic_transformation(2, 3);
+    d_adjoint_matrix._setRows(6);
+    d_adjoint_matrix._setColumns(6);
     
-    parameters.alpha = (1 / phi);
-    parameters.beta = 0;
-    parameters.gamma = 0;
+    //adjoint <-- zeros(6,6)
+    d_adjoint_matrix._setZero(culiopD.strm);
     
-    culina_stat = cuLiNA::culina_matrix_Dmultiplication((culina_base_matrix<double> *) &d_auxiliar_matrix2,
-                                                        (culina_base_matrix<double> *) &d_linear_velocity,
-                                                        (culina_base_matrix<double> *) &d_linear_velocity,
-                                                        parameters);
+    //adjoint(0:2,0:2) <-- T(R)
+    stat = culina_Dblock_assignment_operation(&d_homogenic_transformation, &d_adjoint_matrix, 0,0,0,0,3,3, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__);
+    //adjoint(3:5,3:5) <-- T(R)
+    stat = culina_Dblock_assignment_operation(&d_homogenic_transformation, &d_adjoint_matrix, 0,0,3,3,3,3, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    return;
+    //adjoint(0:2,3:5) <-- t_xR)
+    stat = culina_Dblock_assignment_operation(culiopD.workspace, &d_adjoint_matrix, 0,0,0,3,3,3, culiopD);
+    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
+    return stat;
 }

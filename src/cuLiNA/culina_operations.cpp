@@ -13,110 +13,23 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_tm<double> *
                                                              culina_tm<double> *cu_matrix3,
                                                              cuLiNA::culiopD_t &culiopD) {
     
-    /***
-    *
-    * if the left-most matrix of the right hand-side part of the equation is supposed to be inverted before
-    * multiplication.
-    *
-    * */
-    if (culiopD.cuLiNA_op_m1 == CULINA_INVERSE_ON) {
-        
-        culina_tm<double> *workspace = culiopD.workspace;
-        
-        cublasStatus_t cublas_stat = CUBLAS_STATUS_SUCCESS;
-        cusolverStatus_t cusolver_stat1 = CUSOLVER_STATUS_SUCCESS;
-        cusolverStatus_t cusolver_stat2 = CUSOLVER_STATUS_SUCCESS;
+    if(cu_matrix1 != NULL && cu_matrix2 != NULL && cu_matrix3 != NULL) {
     
-        cusolver_stat1 = cuSOLVER_wrapper::cusolver_wrapper::_cusolver_Dqr_factorization(*cu_matrix1,
-                                                                                         *workspace,
-                                                                                         culiopD.d_TAU,
-                                                                                         culiopD.dev_info,
-                                                                                         culiopD.strm);
-        
-        cusolver_wrapper::_cusolverCheckErrors(cusolver_stat1, __FILE__, __FUNCTION__);
-        assert(cusolver_stat1 == CUSOLVER_STATUS_SUCCESS);
+        if((culiopD.op_m1==CUBLAS_OP_T?cu_matrix1->_getRows():cu_matrix1->_getColumns()) !=
+            (culiopD.op_m2==CUBLAS_OP_T?cu_matrix2->_getColumns():cu_matrix2->_getRows()))
+            return CULINA_PARAMETERS_MISMATCH;
     
-        //cu_matrix1->_printMatrix();
-        
-        cusolver_stat2 = cuSOLVER_wrapper::cusolver_wrapper::_cusolver_Doperation_multiplication_qr(*cu_matrix1,
-                                                                                                    *cu_matrix2,
-                                                                                                    *workspace,
-                                                                                                    culiopD.d_TAU,
-                                                                                                    culiopD.dev_info,
-                                                                                                    CUBLAS_OP_T,
-                                                                                                    CUBLAS_SIDE_LEFT,
-                                                                                                    culiopD.strm);
+        if((culiopD.op_m1==CUBLAS_OP_T?cu_matrix1->_getColumns():cu_matrix1->_getRows()) != cu_matrix3->_getRows())
+            return CULINA_PARAMETERS_MISMATCH;
     
-//        cudaDeviceSynchronize();
-//
-//        cusolverDnDorgqr(cuSOLVER_wrapper::cusolver_wrapper::_getCusolverDn_handle(),
-//                         cu_matrix1->_getRows(),
-//                         cu_matrix1->_getColumns(),
-//                         220,
-//                         cu_matrix1->_getRawData(),
-//                         cu_matrix1->_getLeading_dimension(),
-//                         culiopD.d_TAU,
-//                         workspace->_getRawData(),
-//                         workspace->_getLeading_dimension(),
-//                         culiopD.dev_info);
-//
-//        cu_matrix1->_printMatrix();
+        if((culiopD.op_m2==CUBLAS_OP_T?cu_matrix2->_getRows():cu_matrix2->_getColumns()) != cu_matrix3->_getColumns())
+            return CULINA_PARAMETERS_MISMATCH;
         
-//        std::cout << sizeof(culiopD.d_TAU) << std::endl;
-        
-        cusolver_wrapper::_cusolverCheckErrors(cusolver_stat2, __FILE__, __FUNCTION__);
-        if(cusolver_stat2 != CUSOLVER_STATUS_SUCCESS){
+        if (cu_matrix1->_getMatrix_type() != cuLiNA::matrix_advanced_initialization_t::DIAGONAL &&
+            cu_matrix2->_getMatrix_type() == cuLiNA::matrix_advanced_initialization_t::DIAGONAL) {
     
-            int devInfo;
-            cudaMemcpy(&devInfo, culiopD.dev_info, sizeof(int), cudaMemcpyDeviceToHost);
-            std::cerr << "devInfo " << devInfo << std::endl;
-            
-            std::cout << "cu_matrix1" << std::endl << std::endl;
-            cu_matrix1->_printMatrix(false, true);
-            std::cout << std::endl;
-
-            std::cout << "cu_matrix2" << std::endl << std::endl;
-            cu_matrix2->_printMatrix(false, true);
-            std::cout << std::endl;
-            
-            std::cout << "workspace" << std::endl << std::endl;
-            workspace->_printMatrix(false, true);
-            std::cout << std::endl;
-            
-        }
-        assert(cusolver_stat2 == CUSOLVER_STATUS_SUCCESS);
-        
-        cublas_stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dtriangular_system_solver(*cu_matrix1,
-                                                                                        *cu_matrix2,
-                                                                                        culiopD.alpha,
-                                                                                        CUBLAS_SIDE_LEFT,
-                                                                                        CUBLAS_FILL_MODE_UPPER,
-                                                                                        CUBLAS_OP_N,
-                                                                                        CUBLAS_DIAG_NON_UNIT,
-                                                                                        culiopD.strm);
-    
-        cublas_wrapper::_cublasCheckErrors(cublas_stat, __FILE__, __FUNCTION__, 0);
-        assert(cublas_stat == CUBLAS_STATUS_SUCCESS);
-        
-    }
-        
-        /**
-         *
-         * if the left-most matrix of right handside equation does not need to be inverted.
-         *
-         * */
-    
-    else {
-    
-        /**
-         *
-         *
-         *
-         * */
-        if (cu_matrix2->    _getMatrix_type() == cuLiNA::matrix_advanced_initialization_t::DIAGONAL) {
-        
             cuLiNA::cuLiNA_error_t culina_stat;
-            
+    
             culina_stat = cuLiNA::culina_Ddiagonal_multiplication(cu_matrix1->_getRawData(),
                                                                   culiopD.op_m1,
                                                                   culiopD.alpha,
@@ -133,15 +46,14 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_tm<double> *
                                                                   cu_matrix3->_getColumns(),
                                                                   cu_matrix3->_getLeading_dimension(),
                                                                   culiopD.strm);
-            
+    
             cuLiNACheckErrors(culina_stat, __FILE__, __FUNCTION__, __LINE__);
-            assert(culina_stat == cuLiNA::cuLiNA_error_t::CULINA_SUCCESS);
-            
-            
-        } else {
+            //assert(culina_stat == cuLiNA::cuLiNA_error_t::CULINA_SUCCESS);
     
+        }  else {
+            
             cublasStatus_t cublas_stat;
-    
+        
             cublas_stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dmultiplication(*cu_matrix1,
                                                                                   *cu_matrix2,
                                                                                   *cu_matrix3,
@@ -150,17 +62,21 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dmultiplication(culina_tm<double> *
                                                                                   culiopD.alpha,
                                                                                   culiopD.beta,
                                                                                   culiopD.strm);
-    
-            cublas_wrapper::_cublasCheckErrors(cublas_stat, __FILE__, __FUNCTION__, 0);
-            assert(cublas_stat == CUBLAS_STATUS_SUCCESS);
-            if(cublas_stat == CUBLAS_STATUS_ALLOC_FAILED)
-                return CULINA_MATRIX_NOT_INSTANTIATED;
-            if(cublas_stat == CUBLAS_STATUS_INVALID_VALUE)
-                return CULINA_MATRIX_NOT_INSTANTIATED;
         
+            cublas_wrapper::_cublasCheckErrors(cublas_stat, __FILE__, __FUNCTION__, __LINE__);
+            //assert(cublas_stat == CUBLAS_STATUS_SUCCESS);
+            if (cublas_stat == CUBLAS_STATUS_ALLOC_FAILED)
+                return CULINA_MATRIX_NOT_INSTANTIATED;
+            if (cublas_stat == CUBLAS_STATUS_INVALID_VALUE)
+                return CULINA_MATRIX_NOT_INSTANTIATED;
+            if (cublas_stat != CUBLAS_STATUS_SUCCESS)
+                return CULINA_INVALID_PARAMETER;
         }
-        
+    
     }
+    
+    else return CULINA_MATRIX_NOT_INSTANTIATED;
+    
     
     return CULINA_SUCCESS;
     
@@ -172,11 +88,13 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dnorm(culina_tm<double> *cu_matrix1,
     
     cublasStatus_t cublas_stat;
     
+    if(cu_matrix1->_getColumns() != 1) return CULINA_PARAMETERS_MISMATCH;
+    
     cublas_stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dnorm(*cu_matrix1, result, culiopD.strm);
+    cublas_wrapper::_cublasCheckErrors(cublas_stat, __FILE__, __FUNCTION__, __LINE__);
     
-    cublas_wrapper::_cublasCheckErrors(cublas_stat, __FILE__, __FUNCTION__, 0);
     assert(cublas_stat == CUBLAS_STATUS_SUCCESS);
-    
+   
     return CULINA_SUCCESS;
     
 }
@@ -186,22 +104,75 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_matrix_Dsum(culina_tm<double> *cu_matrix1,
                                                   culina_tm<double> *cu_matrix3,
                                                   cuLiNA::culiopD_t &culiopD) {
     
-    cublasStatus_t stat;
+    auto stat = CULINA_SUCCESS;
     
-    stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(*cu_matrix1,
-                                                        *cu_matrix2,
-                                                        *cu_matrix3,
-                                                        culiopD.op_m1,
-                                                        culiopD.op_m2,
-                                                        culiopD.alpha,
-                                                        culiopD.beta,
-                                                        culiopD.strm);
+    if(cu_matrix3 != NULL) {
     
-    cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
-    assert(stat == cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+//        cublasStatus_t stat;
+        
+//        stat = cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(*cu_matrix1,
+//                                                            *cu_matrix2,
+//                                                            *cu_matrix3,
+//                                                            culiopD.op_m1,
+//                                                            culiopD.op_m2,
+//                                                            culiopD.alpha,
+//                                                            culiopD.beta,
+//                                                            culiopD.strm);
+    
+        stat = cuLiNA::culina_Dsumm(cu_matrix1 == NULL ? NULL : cu_matrix1->_getRawData(),
+                                    (culiopD.op_m1 == CUBLAS_OP_T),
+                                    culiopD.alpha,
+                                    (cu_matrix1 == NULL ? cu_matrix3 : cu_matrix1)->_getRows(),
+                                    (cu_matrix1 == NULL ? cu_matrix3 : cu_matrix1)->_getColumns(),
+                                    (cu_matrix1 == NULL ? cu_matrix3 : cu_matrix1)->_getLeading_dimension(),
+                                    cu_matrix2 == NULL ? NULL : cu_matrix2->_getRawData(),
+                                    (culiopD.op_m2 == CUBLAS_OP_T),
+                                    culiopD.beta,
+                                    (cu_matrix2 == NULL ? cu_matrix3 : cu_matrix2)->_getRows(),
+                                    (cu_matrix2 == NULL ? cu_matrix3 : cu_matrix2)->_getColumns(),
+                                    (cu_matrix2 == NULL ? cu_matrix3 : cu_matrix2)->_getLeading_dimension(),
+                                    cu_matrix3->_getRawData(),
+                                    culiopD.gamma,
+                                    cu_matrix3->_getRows(),
+                                    cu_matrix3->_getColumns(),
+                                    cu_matrix3->_getLeading_dimension(),
+                                    culiopD.strm);
+        
+    
+//        cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+//        assert(stat == cublasStatus_t::CUBLAS_STATUS_SUCCESS);
+        
+        cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+        
+    }
+    else stat = CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    return stat;
+    
+}
+
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dinverse_matrix(culina_tm<double> *cu_matrix1,
+                                                      culina_tm<double> *cu_matrix2,
+                                                      culiopD_t &culiopD) {
+    
+    if (cu_matrix1 != NULL && cu_matrix2 != NULL) {
+        
+        if (culiopD.dev_info == NULL) return CULINA_INVALID_PARAMETER;
+        
+        auto stat = (cu_matrix1->_isSquare()) ?
+                    cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(*cu_matrix1,
+                                                                     *cu_matrix2,
+                                                                     culiopD.dev_info,
+                                                                     culiopD.strm) :
+                    CUBLAS_STATUS_INVALID_VALUE;
+        
+        cuBLAS_wrapper::cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+        //std::cout << "and that's us again friend" << std::endl;
+        
+    } else return CULINA_MATRIX_NOT_INSTANTIATED;
     
     return CULINA_SUCCESS;
-    
 }
 
 /***
@@ -240,6 +211,7 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina
                                                                           culina_tm<double> *delta,
                                                                           culina_tm<double> *data,
                                                                           culina_tm<double> *weight,
+                                                                          double k_lambda_scalar,
                                                                           cuLiNA::culiopD_t &culiopD_1,
                                                                           cuLiNA::culiopD_t &culiopD_2,
                                                                           cuLiNA::culiopD_t &culiopD_3) {
@@ -266,16 +238,18 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina
     if(culiopD_3.workspace == NULL)
         return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
     
-    cuLiNA_error_t stat;
+    cuLiNA_error_t stat_culina;
+    cudaError_t stat_cuda;
     
     cudaEvent_t evnt_1, evnt_2;
+
+    cudaCheckErrors(cudaEventCreate(&evnt_1), __FILE__, __FUNCTION__, __LINE__);
     
-    cudaEventCreate(&evnt_1);
-    cudaEventCreate(&evnt_2);
+    cudaCheckErrors(cudaEventCreate(&evnt_2), __FILE__, __FUNCTION__, __LINE__);
     
-    //r1 = (J^T)*W
-    culiopD_1.op_m1 = cublasOperation_t::CUBLAS_OP_T;
-    int old_num_ele_1 = culiopD_1.workspace->_getNumber_of_elements();
+    auto old_num_ele_1 = culiopD_1.workspace->_getNumber_of_elements();
+    auto old_num_rows_1 = culiopD_1.workspace->_getRows();
+    auto old_num_cols_1 = culiopD_1.workspace->_getColumns();
     
     if(old_num_ele_1 >= jacobian->_getNumber_of_elements()) {
         culiopD_1.workspace->_setRows(jacobian->_getColumns()); ///<-Because it will receive the value of a transpose jacobian
@@ -285,73 +259,276 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina
         std::cout << "lascou-se" << std::endl;
         return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
     }
+
+
+//    r1 = (J^T)*W
     
-//    jacobian->_printMatrix();
-//    weight->_printMatrix();
-    
-    stat = cuLiNA::culina_matrix_Dmultiplication(jacobian, weight, culiopD_1.workspace, culiopD_1);
-    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
-    if(culiopD_1.strm != NULL)
-        cudaEventRecord(evnt_1, *culiopD_1.strm);
-    else cudaEventRecord(evnt_1, NULL);
-    
-    if(culiopD_2.strm != NULL)
-        cudaStreamWaitEvent(*culiopD_2.strm, evnt_1, 0);
-    if(culiopD_3.strm != NULL)
-        cudaStreamWaitEvent(*culiopD_3.strm, evnt_1, 0);
-    if(culiopD_2.strm == NULL && culiopD_3.strm == NULL)
-        cudaStreamWaitEvent(NULL, evnt_1, 0);
-    
-//    culiopD_1.workspace->_printMatrix();
-    
-    culiopD_2.alpha = -1;
-    //r2 = -r1*data_x
-    //std::cout << "r2 = -r1*data_x" << std::endl;
-    stat = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, data, culiopD_2.workspace, culiopD_2);
-    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
-    if(culiopD_2.strm != NULL)
-        cudaEventRecord(evnt_1, *culiopD_2.strm);
-    else cudaEventRecord(evnt_1, NULL);
-    
-//    data->_printMatrix(true, true);
-//    culiopD_2.workspace->_printMatrix();
-    
-    //r3 = r1*J
-    //std::cout << "r3 = r1*J" << std::endl;
-    stat = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, jacobian, culiopD_3.workspace, culiopD_3);
-    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
-    if(culiopD_3.strm != NULL)
-        cudaEventRecord(evnt_2, *culiopD_3.strm);
-    else cudaEventRecord(evnt_2, NULL);
-    
-    if(culiopD_1.strm != NULL) {
-        cudaStreamWaitEvent(*culiopD_1.strm, evnt_1, 0);
-        cudaStreamWaitEvent(*culiopD_1.strm, evnt_2, 0);
-    }
-    else{
-    
-        cudaStreamWaitEvent(NULL, evnt_1, 0);
-        cudaStreamWaitEvent(NULL, evnt_2, 0);
-        
-    }
-    
-//    culiopD_3.workspace->_printMatrix();
- 
+    culiopD_1.op_m1 = cublasOperation_t::CUBLAS_OP_T;
     culiopD_1.alpha = 1;
+    culiopD_1.beta = 0;
+    culiopD_1.gamma = 0;
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(jacobian, weight, culiopD_1.workspace, culiopD_1);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaEventRecord(evnt_1, (culiopD_1.strm!=NULL)?*culiopD_1.strm:0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaStreamWaitEvent((culiopD_2.strm!=NULL)?*culiopD_2.strm:0, evnt_1, 0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaStreamWaitEvent((culiopD_3.strm!=NULL)?*culiopD_3.strm:0, evnt_1, 0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+//    r2 = -r1*data_x
+//    std::cout << "r2 = -r1*data_x" << std::endl;
+    culiopD_2.alpha = -1;
+    culiopD_2.beta = 0;
+    culiopD_2.gamma = 0;
+    culiopD_2.op_m1 = culiopD_2.op_m2  = CUBLAS_OP_N;
+    
+//    culiopD_1.workspace->_printMatrix(false, true);
+//    data->_printMatrix(false, true);
+//    culiopD_2.workspace->_printMatrix(false, true);
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, data, culiopD_2.workspace, culiopD_2);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    //    r3 = r1*J
+//    std::cout << "r3 = r1*J" << std::endl;
+    
+    culiopD_3.workspace->_setIdentity(culiopD_3.strm);
+    culiopD_3.alpha = 1;
+    culiopD_3.beta = ((k_lambda_scalar>0)?k_lambda_scalar:0);
+    culiopD_3.gamma = 0;
+    culiopD_3.op_m1 = culiopD_3.op_m2  = CUBLAS_OP_N;
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, jacobian, culiopD_3.workspace, culiopD_3);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaDeviceSynchronize();
+
+    std::string r1("/home/spades/kinetic_ws/src/cgmapping/r1_matrix.m");
+    std::string r2("/home/spades/kinetic_ws/src/cgmapping/r2_matrix.m");
+    std::string r3("/home/spades/kinetic_ws/src/cgmapping/r3_matrix.m");
+
+//    cuLiNA::culina_download_matrix_file(*culiopD_1.workspace, r1);
+//    cuLiNA::culina_download_matrix_file(*culiopD_2.workspace, r2);
+//    cuLiNA::culina_download_matrix_file(*culiopD_3.workspace, r3);
+    
+    cudaMalloc(&culiopD_3.dev_info, sizeof(int));
+    
+    stat_culina = cuLiNA::culina_Dinverse_matrix(culiopD_3.workspace, culiopD_3.workspace, culiopD_3);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaEventRecord(evnt_1, (culiopD_2.strm!=NULL)?*culiopD_2.strm:0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaEventRecord(evnt_2, (culiopD_3.strm!=NULL)?*culiopD_3.strm:0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaStreamWaitEvent((culiopD_1.strm!=NULL)?*culiopD_1.strm:0, evnt_1, 0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_cuda = cudaStreamWaitEvent((culiopD_1.strm!=NULL)?*culiopD_1.strm:0, evnt_2, 0);
+    cudaCheckErrors(stat_cuda, __FILE__, __FUNCTION__, __LINE__);
+    
+//    DELTA_x = inv(r3)*r2
+    culiopD_1.alpha = 1;
+    culiopD_1.beta = 0;
+    culiopD_1.gamma = 0;
     culiopD_1.op_m1 = cublasOperation_t::CUBLAS_OP_N;
-    culiopD_1.cuLiNA_op_m1 = cuLiNA_operation_t::CULINA_INVERSE_ON;
     culiopD_1.workspace->_setRows(old_num_ele_1);
     culiopD_1.workspace->_setColumns(1);
-    //DELTA_x = inv(r3)*r2
-    stat = cuLiNA::culina_matrix_Dmultiplication(culiopD_3.workspace, culiopD_2.workspace, NULL, culiopD_1);
-    cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_3.workspace, culiopD_2.workspace, delta, culiopD_1);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaStreamSynchronize(*(culiopD_1.strm));
+    
+//    delta->_printMatrix();
     
     cudaEventDestroy(evnt_1);
     cudaEventDestroy(evnt_2);
     
-    return stat;
+    cudaFree(culiopD_3.dev_info);
+    
+    culiopD_1.workspace->_setRows(old_num_rows_1);
+    culiopD_1.workspace->_setColumns(old_num_cols_1);
+    
+    return stat_culina;
     
 }
+
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsolve_gradient_descent_first_order(culina_tm<double> *jacobian,
+                                                                          culina_tm<double> *delta,
+                                                                          culina_tm<double> *data,
+                                                                          culina_tm<double> *weight,
+                                                                          culina_tm<double> *motion_prior,
+                                                                          culina_tm<double> *cov_motion_prior,
+                                                                          culina_tm<double> *estimation_k,
+                                                                          double k_lambda_scalar,
+                                                                          culiopD_t &culiopD_1,
+                                                                          culiopD_t &culiopD_2,
+                                                                          culiopD_t &culiopD_3) {
+    
+    if (jacobian == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (delta == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (data == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (weight == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (weight == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (motion_prior == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (cov_motion_prior == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (estimation_k == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (culiopD_1.workspace == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (culiopD_2.workspace == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if (culiopD_3.workspace == NULL)
+        return cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    cuLiNA_error_t stat_culina;
+    cudaError_t stat_cuda;
+    
+    cudaEvent_t evnt_1, evnt_2;
+    
+    cudaCheckErrors(cudaEventCreate(&evnt_1), __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaEventCreate(&evnt_2), __FILE__, __FUNCTION__, __LINE__);
+    
+    auto old_num_ele_1 = culiopD_1.workspace->_getNumber_of_elements();
+    auto old_num_rows_1 = culiopD_1.workspace->_getRows();
+    auto old_num_cols_1 = culiopD_1.workspace->_getColumns();
+    
+    if (old_num_ele_1 >= jacobian->_getNumber_of_elements()) {
+        culiopD_1.workspace
+            ->_setRows(jacobian->_getColumns()); ///<-Because it will receive the value of a transpose jacobian
+        culiopD_1.workspace->_setColumns(jacobian->_getRows());
+    } else {
+        std::cout << "lascou-se" << std::endl;
+        return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
+    }
+    
+//    r1 = (J^T)*W
+    culiopD_1.op_m1 = cublasOperation_t::CUBLAS_OP_T;
+    culiopD_1.alpha = 1;
+    culiopD_1.beta = 0;
+    culiopD_1.gamma = 0;
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(jacobian, weight, culiopD_1.workspace, culiopD_1);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+//    r2 = scale_factor*(prior - est_k)
+    culiopD_2.alpha = k_lambda_scalar;
+    culiopD_2.beta = -k_lambda_scalar;
+    culiopD_2.gamma = 0;
+    culiopD_2.op_m1 = culiopD_2.op_m2 = CUBLAS_OP_N;
+    
+    stat_culina = cuLiNA::culina_matrix_Dsum(motion_prior, estimation_k, culiopD_2.workspace, culiopD_2);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+//    r3 <-- cov_motion_prior
+    cudaCheckErrors(culiopD_3.workspace->_loadData(*cov_motion_prior, *culiopD_3.strm), __FILE__, __FUNCTION__, __LINE__);
+    
+//    r3 <-- inv(r3)=info_matrix
+    cudaMalloc(&culiopD_3.dev_info, sizeof(int));
+    stat_culina = cuLiNA::culina_Dinverse_matrix(culiopD_3.workspace, culiopD_3.workspace, culiopD_3);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaEventRecord(evnt_1, (culiopD_1.strm != NULL) ? *culiopD_1.strm : 0),
+                    __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaStreamWaitEvent((culiopD_2.strm != NULL) ? *culiopD_2.strm : 0, evnt_1, 0),
+                    __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaStreamWaitEvent((culiopD_3.strm != NULL) ? *culiopD_3.strm : 0, evnt_1, 0),
+                    __FILE__, __FUNCTION__, __LINE__);
+
+//    r2 = -r1*data_x + r2
+    culiopD_2.alpha = -1;
+    culiopD_2.beta = 1;
+    culiopD_2.gamma = 0;
+    culiopD_2.op_m1 = culiopD_2.op_m2 = CUBLAS_OP_N;
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, data, culiopD_2.workspace, culiopD_2);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+//    r3 = (r1*J + k_lambda_scalar*cov_prior)
+    culiopD_3.alpha = 1;
+    culiopD_3.beta = k_lambda_scalar;
+    culiopD_3.gamma = 0;
+    culiopD_3.op_m1 = culiopD_3.op_m2 = CUBLAS_OP_N;
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_1.workspace, jacobian, culiopD_3.workspace, culiopD_3);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+//    cudaDeviceSynchronize();
+    
+//    std::string r1("/home/spades/kinetic_ws/src/cgmapping/r1_matrix.m");
+//    std::string r2("/home/spades/kinetic_ws/src/cgmapping/r2_matrix.m");
+//    std::string r3("/home/spades/kinetic_ws/src/cgmapping/r3_matrix.m");
+
+//    cuLiNA::culina_download_matrix_file(*culiopD_1.workspace, r1);
+//    cuLiNA::culina_download_matrix_file(*culiopD_2.workspace, r2);
+//    cuLiNA::culina_download_matrix_file(*culiopD_3.workspace, r3);
+    
+    stat_culina = cuLiNA::culina_Dinverse_matrix(culiopD_3.workspace, culiopD_3.workspace, culiopD_3);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaEventRecord(evnt_1, (culiopD_2.strm != NULL) ? *culiopD_2.strm : 0), __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaEventRecord(evnt_2, (culiopD_3.strm != NULL) ? *culiopD_3.strm : 0), __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaStreamWaitEvent((culiopD_1.strm != NULL) ? *culiopD_1.strm : 0, evnt_1, 0), __FILE__, __FUNCTION__, __LINE__);
+    
+    cudaCheckErrors(cudaStreamWaitEvent((culiopD_1.strm != NULL) ? *culiopD_1.strm : 0, evnt_2, 0), __FILE__, __FUNCTION__, __LINE__);
+
+//    DELTA_x = inv(r3)*r2
+    culiopD_1.alpha = 1;
+    culiopD_1.beta = 0;
+    culiopD_1.gamma = 0;
+    culiopD_1.op_m1 = cublasOperation_t::CUBLAS_OP_N;
+    culiopD_1.workspace->_setRows(old_num_ele_1);
+    culiopD_1.workspace->_setColumns(1);
+    
+    stat_culina = cuLiNA::culina_matrix_Dmultiplication(culiopD_3.workspace, culiopD_2.workspace, delta, culiopD_1);
+    cuLiNACheckErrors(stat_culina, __FILE__, __FUNCTION__, __LINE__);
+    
+//    cudaStreamSynchronize(*(culiopD_1.strm));
+
+//    delta->_printMatrix();
+    
+    cudaEventDestroy(evnt_1);
+    cudaEventDestroy(evnt_2);
+    
+    cudaFree(culiopD_3.dev_info);
+    
+    culiopD_1.workspace->_setRows(old_num_rows_1);
+    culiopD_1.workspace->_setColumns(old_num_cols_1);
+    
+    return stat_culina;
+
+}
+
+
 
 cuLiNA::cuLiNA_error_t cuLiNA::culina_Dcreate_buffer(culina_tm<double> &target_matrix,
                                                      culina_tm<double> &buffer,
@@ -409,18 +586,41 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dskew_matrix3x3_operator(culina_tm<double>
     return stat;
 }
 
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dvector_from_skew_matrix3x3_operator(culina_tm<double> *matrix,
+                                                                           culina_tm<double> *result_vector,
+                                                                           culiopD_t &culiopD) {
+    
+    cuLiNA::cuLiNA_error_t stat = cuLiNA::cuLiNA_error_t::CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if(result_vector != NULL && matrix != NULL)
+        stat = culina_Dvector_from_skew_matrix3x3_operator(matrix->_getRawData(),
+                                                           culiopD.alpha,
+                                                           matrix->_getRows(),
+                                                           matrix->_getColumns(),
+                                                           matrix->_getLeading_dimension(),
+                                                           result_vector->_getRawData(),
+                                                           result_vector->_getRows(),
+                                                           result_vector->_getLeading_dimension(),
+                                                           culiopD.strm);
+    return stat;
+}
+
+
 cuLiNA::cuLiNA_error_t cuLiNA::culina_Dblock_assignment_operation(culina_tm<double> *cu_matrix,
                                                                   culina_tm<double> *cu_matrix_result,
-                                                                  int n_row_m_init,
-                                                                  int n_column_m_init,
-                                                                  int n_row_result_init,
-                                                                  int n_column_result_init,
-                                                                  int n_rows,
-                                                                  int n_columns,
+                                                                  int n_row_m_init = 0,
+                                                                  int n_column_m_init = 0,
+                                                                  int n_row_result_init = 0,
+                                                                  int n_column_result_init = 0,
+                                                                  int n_rows = -1,
+                                                                  int n_columns = -1,
                                                                   culiopD_t &culiopD) {
     
     if(cu_matrix == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
     if(cu_matrix_result == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
+    
+    if(n_rows < 0) n_rows = cu_matrix->_getRows();
+    if(n_columns < 0) n_columns = cu_matrix->_getColumns();
     
     return cuLiNA::culina_Dblock_assingment(cu_matrix->_getRawData(),
                                             culiopD.op_m1,
@@ -448,6 +648,9 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_to_vector_operation(culina_tm<do
     
     if(cu_matrix == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
     if(cu_vector_result == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
+    if(!cu_matrix->_isSquare()) return CULINA_PARAMETERS_MISMATCH;
+    if(cu_matrix->_getRows() != cu_vector_result->_getRows()) return CULINA_PARAMETERS_MISMATCH;
+    
     
     return culina_Ddiagonal_to_vector(cu_matrix->_getRawData(),
                                       culiopD.alpha,
@@ -469,6 +672,8 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dtrace_operation(culina_tm<double> *cu_mat
     
     if(cu_matrix == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
     if(cu_auxiliar_vector == NULL) return CULINA_MATRIX_NOT_INSTANTIATED;
+    if(!cu_matrix->_isSquare()) return CULINA_PARAMETERS_MISMATCH;
+    if(cu_matrix->_getRows() != cu_auxiliar_vector->_getRows()) return CULINA_PARAMETERS_MISMATCH;
     
     cuLiNA_error_t stat;
     
@@ -476,7 +681,10 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dtrace_operation(culina_tm<double> *cu_mat
     if(stat != CULINA_SUCCESS)
         return stat;
     
-    return cuLiNA::culina_Dreduction(cu_auxiliar_vector->_getRawData(), cu_auxiliar_vector->_getNumber_of_elements(), result, culiopD.strm);
+    stat = cuLiNA::culina_Dreduction(cu_auxiliar_vector->_getRawData(), cu_auxiliar_vector->_getNumber_of_elements(), result, culiopD.strm);;
+    
+    cudaDeviceSynchronize();
+    
+    return stat;
 
 }
-

@@ -10,6 +10,8 @@
 
 using namespace Eigen;
 
+typedef Matrix<double, 6, 1> Vector6d;
+
 namespace cgmapping {
 
     class twist6D : public state<Vector6d> {

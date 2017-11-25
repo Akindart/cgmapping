@@ -7,48 +7,48 @@
 
 bool cgmapping::twist6D::_update_state(const state<Vector6d> &delta_state) {
     
-    //cgmapping::Timer tmr, tmr2;
-    
-    Vector6d delta_twist, new_twist, cur_twist;
-    Matrix4d homogenic_transformation;
-    
-    cur_twist = this->_getStateInfo();
-    delta_twist = delta_state._getStateInfo();
-    
-    //tmr.reset();
-    
-    //homogenic_transformation = exponential_map_se3(cur_twist);
-    
-    //double t = tmr.elapsed();
-    
-    //std::cout << "time elapsed exponential: " << t*1000000 << " [us]" << std::endl;
-    
-    //tmr.reset();
-    
-    homogenic_transformation = exponential_map_se3(cur_twist) * exponential_map_se3(delta_twist);
-    
-    //t = tmr.elapsed();
-    
-    //std::cout << "time elapsed exponential delta: " << t*1000000 << " [us]" << std::endl;
-    
-    //tmr.reset();
-    
-    new_twist = logarithmic_map_se3(homogenic_transformation);
-    
-    //t = tmr.elapsed();
-    
-    //std::cout << "time elapsed logarithmic: " << t*1000000  << " [us]" << std::endl;
-    
-    //tmr.reset();
-    
-    this->_setStateInfo(new_twist);
-    
-    //t = tmr.elapsed();
-    
-    //std::cout << "set time: " << t*1000000  << " [us]" << std::endl;
-    
-    //t = tmr2.elapsed();
-    //std::cout << "total inside function: " << t*1000000  << " [us]" << std::endl;
+//    //cgmapping::Timer tmr, tmr2;
+//
+//    Vector6d delta_twist, new_twist, cur_twist;
+//    Matrix4d homogenic_transformation;
+//
+//    cur_twist = this->_getStateInfo();
+//    delta_twist = delta_state._getStateInfo();
+//
+//    //tmr.reset();
+//
+//    //homogenic_transformation_ = exponential_map_se3(cur_twist);
+//
+//    //double t = tmr.elapsed_in_sec();
+//
+//    //std::cout << "time elapsed_in_sec exponential: " << t*1000000 << " [us]" << std::endl;
+//
+//    //tmr.reset();
+//
+//    homogenic_transformation = exponential_map_se3(cur_twist) * exponential_map_se3(delta_twist);
+//
+//    //t = tmr.elapsed_in_sec();
+//
+//    //std::cout << "time elapsed_in_sec exponential delta: " << t*1000000 << " [us]" << std::endl;
+//
+//    //tmr.reset();
+//
+//    new_twist = logarithmic_Dmap_se3(homogenic_transformation);
+//
+//    //t = tmr.elapsed_in_sec();
+//
+//    //std::cout << "time elapsed_in_sec logarithmic: " << t*1000000  << " [us]" << std::endl;
+//
+//    //tmr.reset();
+//
+//    this->_setStateInfo(new_twist);
+//
+//    //t = tmr.elapsed_in_sec();
+//
+//    //std::cout << "set time: " << t*1000000  << " [us]" << std::endl;
+//
+//    //t = tmr2.elapsed_in_sec();
+//    //std::cout << "total inside function: " << t*1000000  << " [us]" << std::endl;
     
     return true;
     
@@ -56,21 +56,21 @@ bool cgmapping::twist6D::_update_state(const state<Vector6d> &delta_state) {
 
 bool cgmapping::twist6D::_update_state(const state<Vector6d> &delta_state, double time_elapsed) {
     
-    Vector6d delta_twist, new_twist, cur_twist;
-    Matrix4d homogenic_transformation;
-    
-    cur_twist = this->_getStateInfo();
-    delta_twist = delta_state._getStateInfo();
-    
-    homogenic_transformation =
-        exponential_map_se3(cur_twist, time_elapsed) * exponential_map_se3(delta_twist, time_elapsed);
-    
-    std::cout << std::endl;
-    std::cout << homogenic_transformation << std::endl;
-    
-    new_twist = logarithmic_map_se3(homogenic_transformation, time_elapsed);
-    
-    this->_setStateInfo(new_twist);
+//    Vector6d delta_twist, new_twist, cur_twist;
+//    Matrix4d homogenic_transformation;
+//
+//    cur_twist = this->_getStateInfo();
+//    delta_twist = delta_state._getStateInfo();
+//
+//    homogenic_transformation =
+//        exponential_map_se3(cur_twist, time_elapsed) * exponential_map_se3(delta_twist, time_elapsed);
+//
+//    std::cout << std::endl;
+//    std::cout << homogenic_transformation << std::endl;
+//
+//    new_twist = logarithmic_Dmap_se3(homogenic_transformation, time_elapsed);
+//
+//    this->_setStateInfo(new_twist);
     
     return true;
     

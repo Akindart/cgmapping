@@ -42,12 +42,43 @@ cuLiNA::set_Didentity_matrix(double *d_matrix, int n_rows, int n_columns, cudaSt
 //    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
 //    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
     
-    if (strm == NULL)
-        set_identity_matrix_kernel << < grid_dim, block_dim, 0, NULL >> > (d_matrix, n_rows, n_columns);
-    else set_identity_matrix_kernel << < block_dim, grid_dim, 0, *strm >> > (d_matrix, n_rows, n_columns);
+    set_identity_matrix_kernel << < block_dim, grid_dim, 0, (strm == NULL ? 0 : *strm) >> > (d_matrix, n_rows, n_columns);
     
     return cuLiNA::CULINA_SUCCESS;
     
+}
+
+__host__
+cuLiNA::cuLiNA_error_t cuLiNA::set_Ddiagonal_value_matrix(double *d_matrix,
+                                                          int n_rows,
+                                                          int n_columns,
+                                                          double value,
+                                                          cudaStream_t *strm) {
+    dim3 block_dim;
+    dim3 grid_dim;
+    
+    cuLiNA::compute_kernel_size_for_matrix_operation(n_rows, n_columns, 0, block_dim, grid_dim);
+//    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
+//    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
+    
+    set_diagonal_value_matrix_kernel << < block_dim, grid_dim, 0, (strm == NULL ? 0 : *strm) >> > (d_matrix, n_rows, n_columns, value);
+    
+    return CULINA_SUCCESS;
+}
+
+
+cuLiNA::cuLiNA_error_t cuLiNA::set_Dzero_matrix(double *d_matrix, int n_rows, int n_columns, cudaStream_t *strm) {
+    
+    dim3 block_dim;
+    dim3 grid_dim;
+    
+    cuLiNA::compute_kernel_size_for_matrix_operation(n_rows, n_columns, 0, block_dim, grid_dim);
+//    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
+//    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
+    
+    set_zero_matrix_kernel << < block_dim, grid_dim, 0, (strm == NULL ? 0 : *strm) >> > (d_matrix, n_rows, n_columns);
+    
+    return CULINA_SUCCESS;
 }
 
 __host__ cuLiNA::cuLiNA_error_t cuLiNA::compute_kernel_size_for_matrix_operation(int n_rows,
@@ -420,47 +451,22 @@ __host__ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dsumm(double *d_matrix1,
                                                      int ld_m3,
                                                      cudaStream_t *strm) {
     
-    if ((!transpose_m1 && !transpose_m2) || (transpose_m1 && transpose_m2)) {
-        
-        if (n_rows_m1 != n_rows_m2 || n_rows_m1 != n_rows_m3 || n_rows_m2 != n_rows_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (n_columns_m1 != n_columns_m2 || n_columns_m1 != n_columns_m3 || n_columns_m2 != n_columns_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (ld_m1 != ld_m2 || ld_m1 != ld_m3 || ld_m2 != ld_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        
-    } else if (transpose_m1 && !transpose_m2) {
-        
-        if (n_columns_m1 != n_rows_m2 || n_columns_m1 != n_rows_m3 || n_rows_m2 != n_rows_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (n_rows_m1 != n_columns_m2 || n_rows_m1 != n_columns_m3 || n_columns_m2 != n_columns_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (ld_m1 != ld_m2 || ld_m1 != ld_m3 || ld_m2 != ld_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        
-    } else if (!transpose_m1 && transpose_m2) {
-        
-        if (n_rows_m1 != n_columns_m2 || n_rows_m1 != n_rows_m3 || n_columns_m2 != n_rows_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (n_columns_m1 != n_rows_m2 || n_columns_m1 != n_columns_m3 || n_rows_m2 != n_columns_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        if (ld_m1 != ld_m2 || ld_m1 != ld_m3 || ld_m2 != ld_m3)
-            return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-        
-    }
+    if ((transpose_m1 ? n_columns_m1 : n_rows_m1) != (transpose_m2 ? n_columns_m2 : n_rows_m2) &&
+        (transpose_m1 ? n_rows_m1 : n_columns_m1) != (transpose_m2 ? n_rows_m2 : n_columns_m2))
+        return CULINA_PARAMETERS_MISMATCH;
+    
+    if ((transpose_m1 ? n_columns_m1 : n_rows_m1) != n_rows_m3 &&
+        (transpose_m1 ? n_rows_m1 : n_columns_m1) != n_columns_m3)
+        return CULINA_PARAMETERS_MISMATCH;
     
     dim3 block_dim;
     dim3 grid_dim;
     
-    cuLiNA::compute_kernel_size_for_matrix_operation(n_rows_m1, n_columns_m1, 0, block_dim, grid_dim);
+    cuLiNA::compute_kernel_size_for_matrix_operation(n_rows_m3, n_columns_m3, 0, block_dim, grid_dim);
     
-    if (strm == NULL)
-        culina_Dsumm_kernel << < grid_dim, block_dim, 0, NULL >> >
-            (d_matrix1, transpose_m1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_matrix2, transpose_m2, beta, d_matrix_result, gamma);
-    else
-        culina_Dsumm_kernel << < grid_dim, block_dim, 0, *strm >> >
-            (d_matrix1, transpose_m1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_matrix2, transpose_m2, beta, d_matrix_result, gamma);
-    
+    culina_Dsumm_kernel << < grid_dim, block_dim, 0, (strm == NULL ? 0 : *strm) >> >
+        (d_matrix1, transpose_m1, alpha, ld_m1, d_matrix2, transpose_m2, beta, ld_m2, d_matrix_result, gamma, ld_m3, n_rows_m3, n_columns_m3);
+
     return CULINA_SUCCESS;
     
 }
@@ -488,17 +494,16 @@ __host__ cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_multiplication(double *
         n_rows_m1 ^= n_columns_m1;
     }
     
+    if (n_columns_diag != n_rows_diag){
+        //std::cout << "3" << std::endl;
+        return cuLiNA::cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
+    }
     if (n_columns_m1 != n_columns_diag) {
-        std::cout << "1 " << n_columns_m1 << "   " << n_columns_diag << std::endl;
+        //std::cout << "1 " << n_columns_m1 << "   " << n_columns_diag << std::endl;
         return cuLiNA::cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
     }
     if (n_columns_m1 != n_columns_result && n_rows_m1 != n_rows_result){
-        std::cout << "2" << std::endl;
-        return cuLiNA::cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
-    }
-    
-    if (n_columns_diag != n_rows_diag){
-        std::cout << "3" << std::endl;
+        //std::cout << "2" << std::endl;
         return cuLiNA::cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
     }
     
@@ -513,17 +518,8 @@ __host__ cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_multiplication(double *
     
     cuLiNA::compute_kernel_size_for_matrix_operation(n_rows_m1, n_columns_m1, 0, block_dim, grid_dim);
     
-    if (strm == NULL) {
-        
-        culina_diagonal_Dmultiplication_kernel << < grid_dim, block_dim, 0, NULL >> >
-            (d_matrix1, transpose_m1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_matrix_diag, ld_diag, d_matrix_result, beta);
-        
-    } else {
-        
-        culina_diagonal_Dmultiplication_kernel << < grid_dim, block_dim, 0, *strm >> >
-            (d_matrix1, transpose_m1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_matrix_diag, ld_diag, d_matrix_result, beta);
-        
-    }
+    culina_diagonal_Dmultiplication_kernel << < grid_dim, block_dim, 0, ((strm==NULL)?NULL:*strm) >> >
+        (d_matrix1, transpose_m1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_matrix_diag, ld_diag, d_matrix_result, beta);
     
     return cuLiNA::cuLiNA_error_t::CULINA_SUCCESS;
     
@@ -594,21 +590,32 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dskew_matrix3x3_operator(double *d_vector,
     if(n_rows_vector != 3) return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
     if(n_rows_result != 3 && n_columns_result != 3) return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
     
-    if(strm == NULL){
+    culina_Dskew_matrix3x3_operator_kernel <<< 1, 3, 0, ((strm==NULL)?0:*strm) >>>
+        (d_vector, alpha, n_rows_vector, ld_vector, d_matrix_result, n_rows_result, n_columns_result, ld_result);
     
-        culina_Dskew_matrix3x3_operator_kernel <<< 1, 3, 0, NULL >>>
-            (d_vector, alpha, n_rows_vector, ld_vector, d_matrix_result, n_rows_result, n_columns_result, ld_result);
-        
-    }
-    
-    else{
-    
-        culina_Dskew_matrix3x3_operator_kernel <<< 1, 3, 0, *strm >>>
-            (d_vector, alpha, n_rows_vector, ld_vector, d_matrix_result, n_rows_result, n_columns_result, ld_result);
-        
-    }
     
     return CULINA_SUCCESS;
+}
+
+__host__
+cuLiNA::cuLiNA_error_t cuLiNA::culina_Dvector_from_skew_matrix3x3_operator(double *d_skew_matrix,
+                                                                           double alpha,
+                                                                           int n_rows_matrix,
+                                                                           int n_columns_matrix,
+                                                                           int ld_matrix,
+                                                                           double *d_vector_result,
+                                                                           int n_rows_vector,
+                                                                           int ld_vector,
+                                                                           cudaStream_t *strm) {
+    
+    if(n_rows_vector != 3) return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
+    if(n_rows_matrix != 3 && n_columns_matrix != 3) return cuLiNA_error_t::CULINA_PARAMETERS_MISMATCH;
+   
+    culina_Dvector_from_skew_matrix3x3_operator_kernel<<< 1, 3, 0, ((strm==NULL)?0:*strm) >>>
+        (d_skew_matrix, alpha, n_rows_matrix, n_columns_matrix, ld_matrix, d_vector_result, n_rows_vector, ld_vector);
+    
+    return CULINA_SUCCESS;
+
 }
 
 __host__
@@ -659,17 +666,9 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dblock_assingment(double *d_matrix1,
     
     cuLiNA::compute_kernel_size_for_matrix_operation(n_rows, n_columns, 0, block_dim, grid_dim);
     
-    if(strm == NULL){
-    
-        culina_Dblock_assingment_kernel << < grid_dim, block_dim >>>
-            (d_matrix1, transpose_m1, alpha, row_m1_init, columns_m1_init, ld_m1, d_matrix_result, rows_result_init, columns_result_init, ld_result, n_rows, n_columns);
-    
-    } else {
-    
-        culina_Dblock_assingment_kernel << < grid_dim, block_dim, 0, *strm >>>
-            (d_matrix1, transpose_m1, alpha, row_m1_init, columns_m1_init, ld_m1, d_matrix_result, rows_result_init, columns_result_init, ld_result, n_rows, n_columns);
-        
-    }
+    culina_Dblock_assingment_kernel << < grid_dim, block_dim, 0, ((strm==NULL)?0:*strm) >>>
+        (d_matrix1, transpose_m1, alpha, row_m1_init, columns_m1_init, ld_m1, d_matrix_result,
+            rows_result_init, columns_result_init, ld_result, n_rows, n_columns);
     
     return CULINA_SUCCESS;
 }
@@ -692,18 +691,9 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Ddiagonal_to_vector(double *d_matrix1,
     dim3 grid_dim;
 
     cuLiNA::compute_kernel_size_for_matrix_operation(rows_result, 0, 0, block_dim, grid_dim);
- 
-    if(strm == NULL){
-        
-        culina_Ddiagonal_to_vector_kernel<<<grid_dim, block_dim>>>
-            (d_matrix1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_vector_result, rows_result, ld_result );
-        
-    } else {
     
-        culina_Ddiagonal_to_vector_kernel<<<grid_dim, block_dim, 0, *strm>>>
-            (d_matrix1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_vector_result, rows_result, ld_result );
-        
-    }
+    culina_Ddiagonal_to_vector_kernel<<<grid_dim, block_dim, 0 , ((strm==NULL)?0:*strm)>>>
+        (d_matrix1, alpha, n_rows_m1, n_columns_m1, ld_m1, d_vector_result, rows_result, ld_result );
 
     return CULINA_SUCCESS;
 
@@ -715,25 +705,30 @@ cuLiNA::cuLiNA_error_t cuLiNA::culina_Dreduction(double *data, int number_of_ele
     thrust::plus<double> binary_operator;
     double initial_sum_value = 0;
     
-    if (strm == NULL) {
-        
-        result = thrust::reduce(thrust::device,
-                                data,
-                                data + number_of_elements,
-                                initial_sum_value,
-                                binary_operator);
-        
-    } else {
-        
-        result = thrust::reduce(thrust::cuda::par.on(*strm),
-                                data,
-                                data + number_of_elements,
-                                initial_sum_value,
-                                binary_operator);
-        
-    }
+    auto exec = thrust::cuda::par.on((strm==NULL)?NULL:*strm);
     
+    result = thrust::reduce(exec,
+                            data,
+                            data + number_of_elements,
+                            initial_sum_value,
+                            binary_operator);
+
     
     return CULINA_SUCCESS;
     
 }
+
+
+
+//template <typename T, typename Alloc = thrust::device_malloc_allocator<T>>
+//cuLiNA::cuLiNA_error_t cuLiNA::vector_resize(thrust::device_vector<T, Alloc> &vec, size_t new_vec_size, const T value) {
+//
+//    vec.resize(new_vec_size, value);
+//
+//    return CULINA_SUCCESS;
+//
+//}
+
+//template cuLiNA::cuLiNA_error_t cuLiNA::vector_resize(thrust::device_vector<double, cuLiNA::culina_matrix_allocator<double> >,
+//                                                        uint,
+//                                                      const double);

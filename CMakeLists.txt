@@ -7,27 +7,36 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  cmake_modules
-  eigen_conversions
-  geometry_msgs
-  nav_msgs
-  octomap_msgs
-  octomap_ros
-  pcl_conversions
-  pcl_msgs
-  pcl_ros
-  roscpp
-  tf
+find_package(
+        catkin REQUIRED COMPONENTS
+        cmake_modules
+        cv_bridge
+        eigen_conversions
+        geometry_msgs
+        nav_msgs
+        octomap_msgs
+        octomap_ros
+        pcl_conversions
+        pcl_msgs
+        pcl_ros
+        roscpp
+        tf2
+        tf2_ros
+        tf2_msgs
+        tf2_geometry_msgs
+        tf2_sensor_msgs
+        sensor_msgs
+        image_transport
+        std_msgs
 )
 
 set(CUDA_TOOLKIT_ROOT_DIR "/home/spades/cuda-8.0")
 
 ## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system regex)
 find_package(Eigen3 REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(OpenCV REQUIRED opencv>=3.2)
+pkg_check_modules(OpenCV REQUIRED opencv>=3)
 find_package(octomap REQUIRED)
 find_package(CUDA REQUIRED)
 
@@ -40,8 +49,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG")
 
 #set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
-
-set(CUDA_NVCC_FLAGS "--x cu -arch=compute_30 -code=sm_30 -DTHRUST_DEBUG --default-stream per-thread -expt-extended-lambda" CACHE STRING "nvcc flags" FORCE)
+#-DTHRUST_DEBUG -g -G
+set(CUDA_NVCC_FLAGS "--x cu -arch=compute_30 -code=sm_30  -expt-extended-lambda" CACHE STRING "nvcc flags" FORCE)
 set(CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
 set(LIB_TYPE STATIC include/cuda_parsing_helper_in_clion/clion_helper.h)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_DEF=1" )
@@ -137,7 +146,26 @@ set(gtest_SOURCE_DIR /home/spades/googletest-master)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES cgmapping
-#  CATKIN_DEPENDS cmake_modules eigen_conversions geometry_msgs nav_msgs octomap_msgs octomap_ros opencv3 pcl_conversions pcl_msgs pcl_ros roscpp tf
+        CATKIN_DEPENDS
+        cmake_modules
+        cv_bridge
+        eigen_conversions
+        geometry_msgs
+        nav_msgs
+        octomap_msgs
+        octomap_ros
+        pcl_conversions
+        pcl_msgs
+        pcl_ros
+        roscpp
+        tf2
+        tf2_ros
+        tf2_msgs
+        tf2_geometry_msgs
+        tf2_sensor_msgs
+        sensor_msgs
+        image_transport
+        std_msgs
 #  DEPENDS system_lib
 )
 
@@ -150,12 +178,14 @@ catkin_package(
 # include_directories(include)
 include_directories(
         include/
+        src/
         ${catkin_INCLUDE_DIRS}
         ${octomap_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
         ${CUDA_INCLUDE_DIRS}
         ${CUDA_CUDART_LIBRARY}
         ${EIGEN_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
         ${gtest_SOURCE_DIR}/include
         ${gtest_SOURCE_DIR}
 )
@@ -164,36 +194,9 @@ include_directories(
 # add_library(cgmapping
 #   src/${PROJECT_NAME}/cgmapping.cpp
 # )
-cuda_add_library(cgmapping_lib
 
-                 include/cgmapping/state6D.h
-
-                 include/cgmapping/twist6D.h
-                 src/cgmapping/twist6D.cpp
-
-
-                 include/cgmapping/timer.h
-
-                 include/cgmapping/image_pyramid.h
-                 src/cgmapping/image_pyramid.cpp
-
-                 include/cgmapping/cgmapping_utils.h
-                 src/cgmapping/cgmapping_utils.cpp
-
-        )
-
-cuda_add_library(cgmapping_cuda_lib
-
-                 include/cgmapping/se3_lie_algebra_utils.cuh
-                 src/cgmapping/se3_lie_algebra_utils.cu
-
-                 include/cgmapping/cgmapping_utils.cuh
-                 src/cgmapping/cgmapping_utils.cu
-
-                 include/cgmapping/cgmapping_utils_kernels.cuh
-                 src/cgmapping/cgmapping_utils_kernels.cu
-
-        )
+#add_library(cv_bridge_lib SHARED IMPORTED)
+#set_target_properties(cv_bridge_lib PROPERTIES IMPORTED_LOCATION /home/spades/kinetic_ws/devel/lib/libcv_bridge.so)
 
 
 cuda_add_library(cuda_aux_lib
@@ -218,6 +221,8 @@ cuda_add_library(culina_kernels_lib
                  include/cuLiNA/culina_utils.cuh
                  src/cuLiNA/culina_utils.cu
 
+                 src/cuLiNA/thrust_test.cu
+
         )
 
 cuda_add_library(culina_lib
@@ -234,7 +239,9 @@ cuda_add_library(culina_lib
                  include/cuLiNA/culina_definition.h
 
                  include/cuLiNA/culina_error_data_types.h
-
+                 
+                 include/cuLiNA/culina_matrix_allocator.h
+                 
                  include/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.h
                  src/cuLiNA/cuSOLVER_wrapper/cusolver_wrapper.cpp
 
@@ -252,6 +259,59 @@ cuda_add_library(image_cuda_lib
 
         )
 
+cuda_add_library(cgmapping_cuda_lib
+
+                 include/cgmapping/se3_lie_algebra_utils.cuh
+                 src/cgmapping/se3_lie_algebra_utils.cu
+                 src/cgmapping/se3_lie_algebra_utils.cpp
+
+                 include/cgmapping/cgmapping_utils.cuh
+                 src/cgmapping/cgmapping_utils.cu
+
+                 include/cgmapping/cgmapping_utils_kernels.cuh
+                 src/cgmapping/cgmapping_utils_kernels.cu
+
+                 )
+
+cuda_add_library(cgmapping_lib
+                 
+                 include/cgmapping/state6D.h
+
+                 include/cgmapping/twist6D.h
+                 src/cgmapping/twist6D.cpp
+
+                 include/cgmapping/timer.h
+
+                 include/cgmapping/image_pyramid.h
+                 src/cgmapping/image_pyramid.cpp
+
+                 include/cgmapping/visual_odometer.h
+                 src/cgmapping/visual_odometer.cpp
+
+                 include/cgmapping/img_motion_estimator.h
+                 src/cgmapping/img_motion_estimator.cpp
+
+                 include/cgmapping/cgmapping_utils.h
+                 src/cgmapping/cgmapping_utils.cpp
+
+                 include/cgmapping/rgb_d_camera_model.h
+                 
+                 include/cgmapping/cgmapping_slam.h
+                 src/cgmapping/cgmapping_slam.cpp
+
+                 )
+
+add_library(rosnodes_lib
+            
+            include/rosnodes/ros_point_cloud_publisher.h
+            src/rosnodes/ros_point_cloud_publisher.cpp
+
+            include/rosnodes/ros_visual_odometer.h
+            src/rosnodes/ros_visual_odometer.cpp
+            
+            )
+
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -259,132 +319,139 @@ cuda_add_library(image_cuda_lib
 add_dependencies(culina_kernels_lib cuda_aux_lib)
 add_dependencies(culina_lib culina_kernels_lib)
 add_dependencies(cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib)
+add_dependencies(cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib)
+add_dependencies(rosnodes_lib cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib)
 
 # cuda compile GPU_CODE for executable
 #  cuda_compile(IMAGE_PYRAMID_TEST src/image_pyramid_test_cuda.cu)
 
 ## Declare a C++ executable
-cuda_add_executable(cgmapping_node src/cgmapping/cgmapping_node.cpp)
+#cuda_add_executable(cgmapping_node src/cgmapping/cgmapping_node.cpp)
+#
+#cuda_add_executable(image_pyramid_test_node src/tests/opencv_with_cuda_tests/image_pyramid_test_node.cpp)
 
-cuda_add_executable(image_pyramid_test_node src/tests/opencv_with_cuda_tests/image_pyramid_test_node.cpp)
+#cuda_add_executable(image_residuals_test_node src/tests/opencv_with_cuda_tests/image_residuals_test_node.cpp)
 
-cuda_add_executable(image_residuals_test_node src/tests/opencv_with_cuda_tests/image_residuals_test_node.cpp)
-
-cuda_add_executable(twist_coord_test_node src/tests/lie_algebra_twist_coord_tests/twist_coord_test_node.cpp)
-
-cuda_add_executable(cublas_wrapper_test_node src/tests/cublas_wrapper_test/cublas_wrapper_test_node.cpp)
+#cuda_add_executable(twist_coord_test_node src/tests/lie_algebra_twist_coord_tests/twist_coord_test_node.cpp)
+#
+#cuda_add_executable(cublas_wrapper_test_node src/tests/cublas_wrapper_test/cublas_wrapper_test_node.cpp)
 
 cuda_add_executable(basic_matrix_tests src/tests/basic_matrix_tests.cpp)
+cuda_add_executable(parallel_visual_odometer_node src/rosnodes/parallel_visual_odometer_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 #add_dependencies(cgmapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${LINE_PROFILER_CU_O})
 #add_dependencies(image_pyramid_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${LINE_PROFILER_CU_O})
-add_dependencies(image_pyramid_test_node image_cuda_lib cuda_aux_lib cgmapping_lib)
-add_dependencies(image_residuals_test_node cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib )
-add_dependencies(twist_coord_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
-add_dependencies(cublas_wrapper_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
+#add_dependencies(image_pyramid_test_node image_cuda_lib cuda_aux_lib cgmapping_lib)
+#add_dependencies(image_residuals_test_node cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib )
+#add_dependencies(twist_coord_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
+#add_dependencies(cublas_wrapper_test_node cgmapping_lib cgmapping_cuda_lib culina_lib cuda_aux_lib culina_kernels_lib)
 add_dependencies(basic_matrix_tests cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib)
+add_dependencies(parallel_visual_odometer_node cgmapping_lib cgmapping_cuda_lib culina_lib culina_kernels_lib cuda_aux_lib rosnodes_lib)
+
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(cgmapping_node
-        ${catkin_LIBRARIES}
-        ${octomap_LIBRARIES}
-)
+#target_link_libraries(cgmapping_node
+#        ${catkin_LIBRARIES}
+#        ${octomap_LIBRARIES}
+#)
 
 message(STATUS "OpenCV_INCLUDE_DIRS = ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBRARIES = ${OpenCV_LIBRARIES}")
 
-target_link_libraries(image_pyramid_test_node
-        ${catkin_LIBRARIES}
-        image_cuda_lib
-        cgmapping_lib
-        ${OpenCV_LIBRARIES}
-        ${CUDA_LIBRARIES}
-)
+#target_link_libraries(image_pyramid_test_node
+#        ${catkin_LIBRARIES}
+#        image_cuda_lib
+#        cgmapping_lib
+#        ${OpenCV_LIBRARIES}
+#        ${CUDA_LIBRARIES}
+#)
 
-target_link_libraries(twist_coord_test_node
-        ${catkin_LIBRARIES}
-        ${Eigen3_LIBRARIES}
+#target_link_libraries(twist_coord_test_node
+#        ${catkin_LIBRARIES}
+#        ${Eigen3_LIBRARIES}
+#
+#        cuda_aux_lib
+#        cgmapping_lib
+#        cgmapping_cuda_lib
+#        culina_lib
+#        culina_kernels_lib
+#
+#        #libraries for parallel linear algebra computing
+#        -L/home/spades/cuda-8.0/lib64/
+#        -lcublas
+#        -lcublas_device
+#        -lcudart
+#        -lcusolver
+#        -fopenmp
+#        ${CUDA_LIBRARIES}
+#)
 
-        cuda_aux_lib
-        cgmapping_lib
-        cgmapping_cuda_lib
-        culina_lib
-        culina_kernels_lib
+#target_link_libraries(cublas_wrapper_test_node
+#        ${catkin_LIBRARIES}
+#
+#        cgmapping_cuda_lib
+#        culina_lib
+#
+#        culina_kernels_lib
+#        cuda_aux_lib
+#        cgmapping_lib
+#
+#
+#        #libraries for parallel linear algebra computing
+#        #-L/usr/local/cuda-8.0/lib64/
+#        -L/home/spades/cuda-8.0/lib64/
+#        -lcublas
+#        -lcublas_device
+#        -lcudart
+#        -lcusolver
+#        -fopenmp
+#        ${CUDA_LIBRARIES}
+#        )
 
-        #libraries for parallel linear algebra computing
-        -L/home/spades/cuda-8.0/lib64/
-        -lcublas
-        -lcublas_device
-        -lcudart
-        -lcusolver
-        -fopenmp
-        ${CUDA_LIBRARIES}
-)
-
-target_link_libraries(cublas_wrapper_test_node
-        ${catkin_LIBRARIES}
-
-        cgmapping_cuda_lib
-        culina_lib
-
-        culina_kernels_lib
-        cuda_aux_lib
-        cgmapping_lib
-
-
-        #libraries for parallel linear algebra computing
-        #-L/usr/local/cuda-8.0/lib64/
-        -L/home/spades/cuda-8.0/lib64/
-        -lcublas
-        -lcublas_device
-        -lcudart
-        -lcusolver
-        -fopenmp
-        ${CUDA_LIBRARIES}
-        )
-
-target_link_libraries(image_residuals_test_node
-        ${catkin_LIBRARIES}
-
-        cgmapping_lib
-        cgmapping_cuda_lib
-        cuda_aux_lib
-
-
-        culina_lib
-        culina_kernels_lib
-
-
-        ${OpenCV_LIBRARIES}
-        #libraries for parallel linear algebra computing
-        #-L/usr/local/cuda-8.0/lib64/
-        -L/home/spades/cuda-8.0/lib64/
-        -lcublas
-        -lcublas_device
-        -lcudart
-        -lcusolver
-        -fopenmp
-        ${CUDA_LIBRARIES}
-
-
-)
+#target_link_libraries(image_residuals_test_node
+#        ${catkin_LIBRARIES}
+#
+#        cgmapping_lib
+#        cgmapping_cuda_lib
+#        cuda_aux_lib
+#
+#
+#        culina_lib
+#        culina_kernels_lib
+#
+#
+#        ${OpenCV_LIBRARIES}
+#        #libraries for parallel linear algebra computing
+#        #-L/usr/local/cuda-8.0/lib64/
+#        -L/home/spades/cuda-8.0/lib64/
+#        -lcublas
+#        -lcublas_device
+#        -lcudart
+#        -lcusolver
+#        -fopenmp
+#        ${CUDA_LIBRARIES}
+#
+#
+#)
 
 target_link_libraries(basic_matrix_tests
                       ${catkin_LIBRARIES}
-                      
-                      cgmapping_lib
-                      cgmapping_cuda_lib
+                      ${Eigen3_LIBRARIES}
+
                       cuda_aux_lib
 
-
-                      culina_lib
                       culina_kernels_lib
+                      culina_lib
 
+                      cgmapping_cuda_lib
+                      cgmapping_lib
+                      
                       gtest
                       gtest_main
-                      
+
+                      ${Boost_LIBRARIES}
                       ${OpenCV_LIBRARIES}
                       #libraries for parallel linear algebra computing
                       #-L/usr/local/cuda-8.0/lib64/
@@ -394,6 +461,41 @@ target_link_libraries(basic_matrix_tests
                       -lcudart
                       -lcusolver
                       -fopenmp
+                      -lcuda
+                      ${CUDA_LIBRARIES}
+
+
+                      )
+
+target_link_libraries(parallel_visual_odometer_node
+                      rosnodes_lib
+                      ${catkin_LIBRARIES}
+                      ${Eigen3_LIBRARIES}
+
+                      
+                      
+                      cgmapping_lib
+                      cgmapping_cuda_lib
+                      
+                      cuda_aux_lib
+
+                      culina_lib
+                      culina_kernels_lib
+                      
+                      gtest
+                      gtest_main
+
+                      ${Boost_LIBRARIES}
+                      ${OpenCV_LIBRARIES}
+                      #libraries for parallel linear algebra computing
+                      #-L/usr/local/cuda-8.0/lib64/
+                      -L/home/spades/cuda-8.0/lib64/
+                      -lcublas
+                      -lcublas_device
+                      -lcudart
+                      -lcusolver
+                      -fopenmp
+                      -lcuda
                       ${CUDA_LIBRARIES}
 
 
@@ -443,6 +545,8 @@ target_link_libraries(basic_matrix_tests
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
+
+#catkin_add_gtest(${PROJECT_NAME}-test src/tests/basic_matrix_tests.cpp)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)

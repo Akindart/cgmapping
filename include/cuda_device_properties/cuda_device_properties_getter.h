@@ -20,8 +20,8 @@ class cuda_device_properties_getter {
         
         cudaError_t stat;
         stat = this->_obtain_from_device_its_properties();
-        
-        cudaCheckErrors(stat, __FILE__, __FUNCTION__);
+    
+        cudaCheckErrors(stat, __FILE__, __FUNCTION__, 0);
         
     };
     

@@ -13,6 +13,7 @@
 #include <cuLiNA/culina_definition.h>
 #include <general_utils.h>
 #include <fstream>
+#include <iostream>
 
 namespace cuLiNA {
     
@@ -20,8 +21,25 @@ namespace cuLiNA {
     
     /***
      *
-     *  culinaOp[cublasOp(A)]
+     *  This method turns invisible the difference between the multiplication of dense matrices with dense matrices
+     *  and dense matrices with diagonal matrices.
      *
+     *  Observe that the input parameters dictate which type of multiplication will be used. The first type of multiplication
+     *  discussed is the conventional
+     *
+     *  m3 = alpha*op(m1)*op(m2) + beta*m3
+     *
+     *  brought from cuBLAS library.
+     *
+     *  The second input combination is when one wants to use the diagonal multiplication using a kernel developed by
+     *  Akindart. In this case this operation is only activated if m1 is a dense matrix and m2 is diagonal, thus yielding
+     *
+     *  m3 = alpha*op(m1)*m2 + beta*m3
+     *
+     *  observe that if someone wants m2 to be multiplied LHS with respect to m1, one should use the transpose op() function
+     *  for m1 when calling the operation.
+     *
+     *  All matrices should have corresponding dimensions.
      *
      * */
     //TODO: generate comments, and add option to invert cu_matrix1 or cu_matrix2 before multiplication procedure
@@ -42,12 +60,19 @@ namespace cuLiNA {
      *
      *  m3 = alpha*op(m1) + beta*op(m2)
      *
+     *  this new version provided by NVidia is not transposing correctly
+     *
      * */
     extern cuLiNA::cuLiNA_error_t culina_matrix_Dsum(culina_tm<double> *cu_matrix1,
                                                      culina_tm<double> *cu_matrix2,
                                                      culina_tm<double> *cu_matrix3,
                                                      cuLiNA::culiopD_t &culiopD = culiopD_default);
 
+    
+    extern cuLiNA::cuLiNA_error_t culina_Dinverse_matrix(culina_tm<double> *cu_matrix1,
+                                                         culina_tm<double> *cu_matrix2,
+                                                         cuLiNA::culiopD_t &culiopD = culiopD_default);
+    
     /***
      *
      * This function is a little bit complex, observe that here we are dealing with the following system
@@ -79,9 +104,22 @@ namespace cuLiNA {
                                                                              culina_tm<double> *delta,
                                                                              culina_tm<double> *data,
                                                                              culina_tm<double> *weight,
-                                                                             cuLiNA::culiopD_t &culiopD_1,
-                                                                             cuLiNA::culiopD_t &culiopD_2,
-                                                                             cuLiNA::culiopD_t &culiopD_3);
+                                                                             double k_lambda_scalar = 0.,
+                                                                             cuLiNA::culiopD_t &culiopD_1 = cuLiNA::culiopD_default,
+                                                                             cuLiNA::culiopD_t &culiopD_2 = cuLiNA::culiopD_default,
+                                                                             cuLiNA::culiopD_t &culiopD_3 = cuLiNA::culiopD_default);
+    
+    extern cuLiNA::cuLiNA_error_t culina_Dsolve_gradient_descent_first_order(culina_tm<double> *jacobian,
+                                                                                 culina_tm<double> *delta,
+                                                                                 culina_tm<double> *data,
+                                                                                 culina_tm<double> *weight,
+                                                                                 culina_tm<double> *motion_prior,
+                                                                                 culina_tm<double> *cov_motion_prior,
+                                                                                 culina_tm<double> *estimation_k,
+                                                                                 double k_lambda_scalar,
+                                                                                 culiopD_t &culiopD_1,
+                                                                                 culiopD_t &culiopD_2,
+                                                                                 culiopD_t &culiopD_3);
     
     
     /**
@@ -97,6 +135,10 @@ namespace cuLiNA {
     extern cuLiNA::cuLiNA_error_t culina_Dskew_matrix3x3_operator(culina_tm<double> *vector,
                                                                   culina_tm<double> *result_matrix,
                                                                   cuLiNA::culiopD_t &culiopD = culiopD_default);
+    
+    extern cuLiNA::cuLiNA_error_t culina_Dvector_from_skew_matrix3x3_operator(culina_tm<double> *matrix,
+                                                                              culina_tm<double> *result_vector,
+                                                                              cuLiNA::culiopD_t &culiopD = culiopD_default);
     
     extern cuLiNA::cuLiNA_error_t culina_Dblock_assignment_operation(culina_tm<double> *cu_matrix,
                                                                      culina_tm<double> *cu_matrix_result,
@@ -157,9 +199,25 @@ namespace cuLiNA {
         
         cu_matrix._allocateMatrixDataMemory();
         
-        cu_matrix._setData(matrix_data);
+        cu_matrix._uploadData(matrix_data.data(), cu_matrix._getNumber_of_elements());
         
         return CULINA_SUCCESS;
+        
+    }
+    
+    template<typename T>
+    cuLiNA::cuLiNA_error_t culina_download_matrix_file(culina_tm<T> &cu_matrix, std::string &matrix_file_name){
+    
+        std::fstream matrix_file_stream(matrix_file_name, std::ios::in | std::ios::out | std::ios::trunc);
+        
+        if(matrix_file_stream.is_open()) {
+    
+            cu_matrix._printMatrix(true, false, matrix_file_stream);
+    
+            matrix_file_stream.close();
+            
+        }
+        else std::cout << "shit" << std::endl;
         
     }
     

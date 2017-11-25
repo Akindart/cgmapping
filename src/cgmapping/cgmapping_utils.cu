@@ -358,48 +358,107 @@ bool cgmapping::cuda::compute_kernel_size_for_matrix_operation(int n_rows,
 }
 
 __host__
-void cgmapping::cuda::pixel_residual_calculation(cv::cuda::GpuMat &img_rgb_t_minus_1,
-                                                 cv::cuda::GpuMat &img_rgb_t,
-                                                 cv::cuda::GpuMat &img_depth_t_minus_1,
-                                                 cv::cuda::GpuMat &img_depth_t,
-                                                 cuLiNA::culina_base_matrix<double> &homogenic_transformation,
-                                                 cuLiNA::culina_base_matrix<double> &residual_matrix,
-                                                 float camera_focus_x,
-                                                 float camera_focus_y,
-                                                 float camera_centroid_x,
-                                                 float camera_centroid_y,
-                                                 int scale_factor,
-                                                 cudaStream_t *strm) {
+void cgmapping::cuda::warped_image_Dcalculation_operation(cv::cuda::GpuMat &img_rgb_t,
+                                                          cv::cuda::GpuMat &img_rgb_t_warped,
+                                                          cv::cuda::GpuMat &img_rgb_t_warped_filter,
+                                                          cv::cuda::GpuMat &img_depth_t_minus_1,
+                                                          cuLiNA::culina_tm<double> &d_img_t_minus_1_point_cloud,
+                                                          cuLiNA::culina_matrix4d &d_homogenic_transformation,
+                                                          float camera_focus_x,
+                                                          float camera_focus_y,
+                                                          float camera_centroid_x,
+                                                          float camera_centroid_y,
+                                                          int scale_factor,
+                                                          cudaStream_t *strm) {
+    
+    auto stat = cuLiNA::CULINA_SUCCESS;
+    
+    auto line = __LINE__;
+    
+    if(img_rgb_t.rows != img_rgb_t_warped.rows ||
+        img_rgb_t.cols != img_rgb_t_warped.cols){
+        
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    if(img_rgb_t.rows != img_depth_t_minus_1.rows ||
+        img_rgb_t.cols != img_depth_t_minus_1.cols){
+    
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    if(d_img_t_minus_1_point_cloud._getRows() != img_rgb_t.rows*img_rgb_t.cols ||
+        d_img_t_minus_1_point_cloud._getColumns() != 3){
+    
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, line);
+    
+    if(stat != cuLiNA::CULINA_SUCCESS) return ;
+    
+    dim3 block_dim;
+    dim3 grid_dim;
+    
+    cgmapping::cuda::compute_kernel_size_for_matrix_operation(img_rgb_t.rows, img_rgb_t.cols, 1, block_dim, grid_dim);
+    
+//    std::cout <<  img_depth_t_minus_1.type() << std::endl;
+    
+//    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
+//    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
+    
+    warped_image_calculation_kernel << < grid_dim, block_dim, 0, ((strm==NULL)?NULL:*strm) >> >
+        (img_rgb_t, img_rgb_t_warped, img_rgb_t_warped_filter, img_depth_t_minus_1,
+            d_img_t_minus_1_point_cloud._getRawData(), d_homogenic_transformation._getRawData(),
+            camera_focus_x, camera_focus_y, camera_centroid_x, camera_centroid_y, scale_factor);
+    
+}
+
+
+__host__
+void cgmapping::cuda::pixel_residual_Dcalculation_operation(cv::cuda::GpuMat &img_rgb_t_minus_1,
+                                                            cv::cuda::GpuMat &img_rgb_t_warped,
+                                                            cv::cuda::GpuMat &img_rgb_t_warped_filter,
+                                                            cuLiNA::culina_tm<double> &residual_matrix,
+                                                            cudaStream_t *strm) {
     
     //And here comes the error verifications, just in case;
     //First let us check if all images and matrices are of the same size;
     
     //Comparing both rgb images
     
-    assert(img_rgb_t.cols == img_rgb_t_minus_1.cols);
-    assert(img_rgb_t.rows == img_rgb_t_minus_1.rows);
+    auto stat = cuLiNA::CULINA_SUCCESS;
     
-    //Comparing both depth images
+    if(img_rgb_t_warped.cols != img_rgb_t_minus_1.cols ||
+        img_rgb_t_warped.rows != img_rgb_t_minus_1.rows){
     
-    assert(img_depth_t.cols == img_depth_t_minus_1.cols);
-    assert(img_depth_t.rows == img_depth_t_minus_1.rows);
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        
+    }
     
-    //Now assuming everything went corretly we can compare rgb with depth image
+    if(residual_matrix._getNumber_of_elements() != img_rgb_t_minus_1.cols*img_rgb_t_minus_1.rows){
     
-    assert(img_depth_t.cols == img_rgb_t.cols);
-    assert(img_depth_t.rows == img_rgb_t.rows);
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        
+    }
     
-    //And now simply compare any image with the size of the residual matrix
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    //assert(residual_matrix._getRows() == img_rgb_t.cols*img_rgb_t.rows);
+    if(stat != cuLiNA::CULINA_SUCCESS) return ;
     
     dim3 block_dim;
     dim3 grid_dim;
     
     int n_cols, n_rows;
     
-    n_cols = img_rgb_t.cols;
-    n_rows = img_rgb_t.rows;
+    n_cols = img_rgb_t_warped.cols;
+    n_rows = img_rgb_t_warped.rows;
     
     cgmapping::cuda::compute_kernel_size_for_matrix_operation(n_rows, n_cols, 1, block_dim, grid_dim);
 
@@ -409,187 +468,227 @@ void cgmapping::cuda::pixel_residual_calculation(cv::cuda::GpuMat &img_rgb_t_min
 //    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
 //    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
     
-    if (strm == NULL) {
-        
-        pixel_residual_calculation_kernel << < grid_dim, block_dim >> > (
-            
-            img_rgb_t_minus_1,
-                img_rgb_t,
-                img_depth_t_minus_1,
-                homogenic_transformation._getRawData(),
-                residual_matrix._getRawData(),
-                camera_focus_x,
-                camera_focus_y,
-                camera_centroid_x,
-                camera_centroid_y,
-                scale_factor
-        
-        );
-        
-    } else {
-        
-        pixel_residual_calculation_kernel << < grid_dim, block_dim, 0, *strm >> > (
-            
-            img_rgb_t_minus_1,
-                img_rgb_t,
-                img_depth_t_minus_1,
-                homogenic_transformation._getRawData(),
-                residual_matrix._getRawData(),
-                camera_focus_x,
-                camera_focus_y,
-                camera_centroid_x,
-                camera_centroid_y,
-                scale_factor
-        
-        );
-        
-    }
+    
+    pixel_residual_calculation_kernel << < grid_dim, block_dim, 0, ((strm==NULL)?NULL:*strm) >> >
+        (img_rgb_t_minus_1, img_rgb_t_warped, img_rgb_t_warped_filter, residual_matrix._getRawData());
     
 }
 
 __host__
-void cgmapping::cuda::residual_jacobian_calculation(cv::cuda::GpuMat &img_rgb_t_minus_1,
-                                                    cv::cuda::GpuMat &img_rgb_t,
-                                                    cv::cuda::GpuMat &img_depth_t_minus_1,
-                                                    cv::cuda::GpuMat &img_depth_t,
-                                                    cuLiNA::culina_base_matrix<double> &homogenic_transformation_positive_disturb,
-                                                    cuLiNA::culina_base_matrix<double> &homogenic_transformation_negative_disturb,
-                                                    cuLiNA::culina_base_matrix<double> &jacobian,
-                                                    int var_number,
-                                                    float camera_focus_x,
-                                                    float camera_focus_y,
-                                                    float camera_centroid_x,
-                                                    float camera_centroid_y,
-                                                    float delta,
-                                                    int scale_factor,
-                                                    cudaStream_t *strm) {
+void cgmapping::cuda::warp_jacobian_Dcalculation_operation(cuLiNA::culina_tm<double> &d_warp_jacobian,
+                                                           cuLiNA::culina_tm<double> &d_img1_point_cloud,
+                                                           cgmapping::rgb_d_camera_model &h_camera_model,
+                                                           cv::cuda::Stream &strm) {
     
-    //And here comes the error verifications, just in case;
-    //First let us check if all images and matrices are of the same size;
+    auto stat = cuLiNA::CULINA_SUCCESS;
     
-    //Comparing both rgb images
+    auto line = __LINE__;
     
-    assert(img_rgb_t.cols == img_rgb_t_minus_1.cols);
-    assert(img_rgb_t.rows == img_rgb_t_minus_1.rows);
+    auto tmp_strm = cv::cuda::StreamAccessor::getStream(strm);
     
-    //Comparing both depth images
+    if(d_img1_point_cloud._getRows()*2 != d_warp_jacobian._getRows()){
+        
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+    }
     
-    assert(img_depth_t.cols == img_depth_t_minus_1.cols);
-    assert(img_depth_t.rows == img_depth_t_minus_1.rows);
+    if(d_img1_point_cloud._getColumns() != 3){
+        
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
     
-    //Now assuming everything went corretly we can compare rgb with depth image
+    if(d_warp_jacobian._getColumns() != 6) {
+     
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
     
-    assert(img_depth_t.cols == img_rgb_t.cols);
-    assert(img_depth_t.rows == img_rgb_t.rows);
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    //And now simply compare any image with the size of the residual matrix
-    
-    //assert(residual_matrix._getRows() == img_rgb_t.cols*img_rgb_t.rows);
-    
-    assert(jacobian._getRows() == img_rgb_t.cols * img_rgb_t.rows);
-    assert(var_number <= jacobian._getColumns());
+    if(stat != cuLiNA::CULINA_SUCCESS) return ;
     
     dim3 block_dim;
     dim3 grid_dim;
     
-    int n_cols, n_rows;
+    cgmapping::cuda::compute_kernel_size_for_matrix_operation(1, d_img1_point_cloud._getRows(), 1, block_dim, grid_dim);
     
-    n_cols = img_rgb_t.cols;
-    n_rows = img_rgb_t.rows;
-    
-    cgmapping::cuda::compute_kernel_size_for_matrix_operation(n_rows, n_cols, 1, block_dim, grid_dim);
-
-//    img_depth_t_minus_1.convertTo(img_depth_t_minus_1, CV_64FC1);
-//    img_depth_t.convertTo(img_depth_t, CV_64FC1);
-
 //    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
 //    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
     
-    if (strm == NULL) {
-        
-        residual_jacobian_calculation_kernel << < grid_dim, block_dim >> > (
-            
-            img_rgb_t,
-                img_depth_t_minus_1,
-                homogenic_transformation_negative_disturb._getRawData(),
-                homogenic_transformation_positive_disturb._getRawData(),
-                jacobian._getRawData(),
-                var_number,
-                camera_focus_x,
-                camera_focus_y,
-                camera_centroid_x,
-                camera_centroid_y,
-                delta,
-                scale_factor
-        
-        );
-        
-    } else {
-        
-        residual_jacobian_calculation_kernel << < grid_dim, block_dim, 0, *strm >> > (
-            
-            img_rgb_t,
-                img_depth_t_minus_1,
-                homogenic_transformation_negative_disturb._getRawData(),
-                homogenic_transformation_positive_disturb._getRawData(),
-                jacobian._getRawData(),
-                var_number,
-                camera_focus_x,
-                camera_focus_y,
-                camera_centroid_x,
-                camera_centroid_y,
-                delta,
-                scale_factor
-        
-        );
-        
-    }
+    warp_jacobian_Dcalculation_kernel << < grid_dim, block_dim, 0, tmp_strm >> >
+        (d_warp_jacobian._getRawData(), d_warp_jacobian._getRows(),
+            d_warp_jacobian._getColumns(), d_img1_point_cloud._getRawData(),
+            d_img1_point_cloud._getRows(), h_camera_model._getFocus_x(),
+            h_camera_model._getFocus_y());
+    
+    
     
 }
 
 __host__
-long cgmapping::cuda::count_valid_data(cuLiNA::culina_base_matrix<double> &data, cudaStream_t *stream) {
+void cgmapping::cuda::full_jacobian_Dcalculation_operation(cv::cuda::GpuMat &warped_img_x_derivative,
+                                                           cv::cuda::GpuMat &warped_img_y_derivative,
+                                                           cuLiNA::culina_tm<double> &d_warp_jacobian,
+                                                           cuLiNA::culina_tm<double> &d_jacobian,
+                                                           cv::cuda::Stream &strm) {
+    
+    auto stat = cuLiNA::CULINA_SUCCESS;
+    
+    auto line = __LINE__;
+    
+    auto tmp_strm = cv::cuda::StreamAccessor::getStream(strm);
+    
+    if(warped_img_x_derivative.rows != warped_img_y_derivative.rows ||
+        warped_img_x_derivative.cols != warped_img_y_derivative.cols){
+    
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    if(d_warp_jacobian._getRows() != warped_img_x_derivative.rows*warped_img_x_derivative.cols*2 ||
+        d_warp_jacobian._getColumns() != 6){
+    
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    if(d_jacobian._getRows() != warped_img_x_derivative.rows*warped_img_x_derivative.cols ||
+        d_jacobian._getColumns() != 6){
+        
+        stat = cuLiNA::CULINA_PARAMETERS_MISMATCH;
+        line = __LINE__;
+        
+    }
+    
+    cuLiNA::cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+    if(stat != cuLiNA::CULINA_SUCCESS) return ;
+    
+    dim3 block_dim;
+    dim3 grid_dim;
+    
+    cgmapping::cuda::compute_kernel_size_for_matrix_operation(warped_img_x_derivative.rows,
+                                                              warped_img_x_derivative.cols,
+                                                              1,
+                                                              block_dim,
+                                                              grid_dim);
+    
+//    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
+//    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
+    
+    full_jacobian_Dcalculation_kernel<< < grid_dim, block_dim, 0, tmp_strm >> >
+        (warped_img_x_derivative, warped_img_y_derivative, d_warp_jacobian._getRawData(),
+            d_warp_jacobian._getRows(), d_warp_jacobian._getColumns(), d_jacobian._getRawData(),
+            d_jacobian._getRows(), d_jacobian._getColumns());
+    
+}
+
+
+//__host__
+//void cgmapping::cuda::residual_jacobian_calculation(cv::cuda::GpuMat &img_rgb_t_minus_1,
+//                                                    cv::cuda::GpuMat &img_rgb_t,
+//                                                    cv::cuda::GpuMat &img_depth_t_minus_1,
+//                                                    cv::cuda::GpuMat &img_depth_t,
+//                                                    cuLiNA::culina_tm<double> &homogenic_transformation_positive_disturb,
+//                                                    cuLiNA::culina_tm<double> &homogenic_transformation_negative_disturb,
+//                                                    cuLiNA::culina_tm<double> &jacobian,
+//                                                    int var_number,
+//                                                    float camera_focus_x,
+//                                                    float camera_focus_y,
+//                                                    float camera_centroid_x,
+//                                                    float camera_centroid_y,
+//                                                    float delta,
+//                                                    int scale_factor,
+//                                                    cudaStream_t *strm) {
+//
+//    //And here comes the error verifications, just in case;
+//    //First let us check if all images and matrices are of the same size;
+//
+//    //Comparing both rgb images
+//
+//    assert(img_rgb_t.cols == img_rgb_t_minus_1.cols);
+//    assert(img_rgb_t.rows == img_rgb_t_minus_1.rows);
+//
+//    //Comparing both depth images
+//
+//    assert(img_depth_t.cols == img_depth_t_minus_1.cols);
+//    assert(img_depth_t.rows == img_depth_t_minus_1.rows);
+//
+//    //Now assuming everything went corretly we can compare rgb with depth image
+//
+//    assert(img_depth_t.cols == img_rgb_t.cols);
+//    assert(img_depth_t.rows == img_rgb_t.rows);
+//
+//    //And now simply compare any image with the size of the residual matrix
+//
+//    //assert(residual_matrix._getRows() == img_rgb_t.cols*img_rgb_t.rows);
+//
+//    assert(jacobian._getRows() == img_rgb_t.cols * img_rgb_t.rows);
+//    assert(var_number <= jacobian._getColumns());
+//
+//    dim3 block_dim;
+//    dim3 grid_dim;
+//
+//    int n_cols, n_rows;
+//
+//    n_cols = img_rgb_t.cols;
+//    n_rows = img_rgb_t.rows;
+//
+//    cgmapping::cuda::compute_kernel_size_for_matrix_operation(n_rows, n_cols, 1, block_dim, grid_dim);
+//
+////    img_depth_t_minus_1.convertTo(img_depth_t_minus_1, CV_64FC1);
+////    img_depth_t.convertTo(img_depth_t, CV_64FC1);
+//
+////    std::cout << "block(" << block_dim.x << " ," << block_dim.y << " ," << block_dim.z << ") - ";
+////    std::cout << "grid(" << grid_dim.x << " ," << grid_dim.y << " ," << grid_dim.z << ")" << std::endl;
+//
+//    residual_jacobian_calculation_kernel << < grid_dim, block_dim, 0, ((strm==NULL)?NULL:*strm) >> >
+//        (img_rgb_t, img_depth_t_minus_1, homogenic_transformation_negative_disturb._getRawData(),
+//            homogenic_transformation_positive_disturb._getRawData(), jacobian._getRawData(), var_number, camera_focus_x,
+//            camera_focus_y, camera_centroid_x, camera_centroid_y, delta, scale_factor);
+//
+//    return;
+//
+//}
+
+__host__
+long cgmapping::cuda::count_valid_data(cuLiNA::culina_tm<double> &data, cudaStream_t *stream) {
     
     auto lambda_is_smaller_predicate = [] __host__ __device__(const double &x) -> bool { return (abs(x) < 1000); };
     
-    if (stream == NULL) {
-        
-        return thrust::count_if(thrust::device,
-                                data._getRawData(),
-                                data._getRawData() + data._getNumber_of_elements(),
-                                lambda_is_smaller_predicate);
-        
-    } else {
-        
-        return thrust::count_if(thrust::cuda::par.on(*stream),
-                                data._getRawData(),
-                                data._getRawData() + data._getNumber_of_elements(),
-                                lambda_is_smaller_predicate);
-        
-    };
+    auto exec = thrust::cuda::par.on(((stream==NULL)?NULL:*stream));
+    
+    return thrust::count_if(exec,
+                            data._getRawData(),
+                            data._getRawData() + data._getNumber_of_elements(),
+                            lambda_is_smaller_predicate);
     
 };
 
 __host__
-double cgmapping::cuda::calculate_standart_deviation_t_student_step(cuLiNA::culina_base_matrix<double> &data,
-                                                                    double degrees_of_freedom,
-                                                                    double standard_deviation_k_minus_1,
-                                                                    int number_of_valid_data,
-                                                                    cudaStream_t *stream) {
+double cgmapping::cuda::variance_t_student_step_Dcalculation_operation(cuLiNA::culina_tm<double> &data,
+                                                                       double degrees_of_freedom,
+                                                                       double variance_k_minus_1,
+                                                                       int number_of_valid_data,
+                                                                       cudaStream_t *stream) {
     
     auto lambda_unary_operator =
-        [degrees_of_freedom, standard_deviation_k_minus_1]
+        [degrees_of_freedom, variance_k_minus_1]
             __device__ __device__(const double &x) -> double {
             
             if (abs(x) > 1000)
-                
                 return 0.0;
             
-            else
-                
-                return (x * x) * (degrees_of_freedom + 1)
-                    / (degrees_of_freedom
-                        + (x / standard_deviation_k_minus_1) * (x / standard_deviation_k_minus_1));
+            auto tmp1 = (x*x);
+            auto tmp2 = (tmp1 / variance_k_minus_1);
+            
+            return tmp1 * ((degrees_of_freedom + 1)
+                            / (degrees_of_freedom + tmp2));
             
         };
     
@@ -598,68 +697,48 @@ double cgmapping::cuda::calculate_standart_deviation_t_student_step(cuLiNA::culi
     
     double result;
     
-    if (stream == NULL) {
-        
-        result = thrust::transform_reduce(thrust::device,
-                                          data._getRawData(),
-                                          data._getRawData() + data._getNumber_of_elements(),
-                                          lambda_unary_operator,
-                                          initial_sum_value,
-                                          binary_operator);
-        
-    } else {
-        
-        result = thrust::transform_reduce(thrust::cuda::par.on(*stream),
-                                          data._getRawData(),
-                                          data._getRawData() + data._getNumber_of_elements(),
-                                          lambda_unary_operator,
-                                          initial_sum_value,
-                                          binary_operator);
-        
-    }
+    auto exec = thrust::cuda::par.on(((stream==NULL)?NULL:*stream));
+ 
+    result = thrust::transform_reduce(exec,
+                                      data._getRawData(),
+                                      data._getRawData() + data._getNumber_of_elements(),
+                                      lambda_unary_operator,
+                                      initial_sum_value,
+                                      binary_operator);
     
-    return std::sqrt((result / number_of_valid_data));
+    return (result/number_of_valid_data);
     
 };
 
 __host__
-void cgmapping::cuda::define_data_weight_t_student(cuLiNA::culina_base_matrix<double> &data,
-                                                   cuLiNA::culina_base_matrix<double> &data_weighted,
-                                                   double degrees_of_freedom,
-                                                   double standard_deviation,
-                                                   cudaStream_t *stream) {
+void cgmapping::cuda::weight_matrix_t_student_Dcalculation_operation(cuLiNA::culina_tm<double> &data,
+                                                                     cuLiNA::culina_tm<double> &weight_matrix,
+                                                                     double degrees_of_freedom,
+                                                                     double variance,
+                                                                     cudaStream_t *stream) {
     
-    assert(data._getNumber_of_elements() == data_weighted._getNumber_of_elements());
+    assert(data._getNumber_of_elements()*data._getNumber_of_elements() == weight_matrix._getNumber_of_elements());
     
     auto lambda_weight_function =
-        [degrees_of_freedom, standard_deviation]
+        [degrees_of_freedom, variance]
             __host__ __device__(const double &x) -> const double {
             
             if(abs(x) > 1000) return 0;
             
+            auto tmp = ((x*x)/ variance);
+            
             return (degrees_of_freedom + 1)
-                / (degrees_of_freedom
-                    + (x / standard_deviation) * (x / standard_deviation));
+                    / (degrees_of_freedom + tmp);
             
         };
     
+    auto exec = thrust::cuda::par.on(((stream==NULL)?NULL:*stream));
     
-    if (stream == NULL) {
-        
-        thrust::transform(thrust::device,
-                          data._getRawData(),
-                          data._getRawData() + data._getNumber_of_elements(),
-                          data_weighted._getRawData(),
-                          lambda_weight_function);
-        
-    } else {
-        
-        thrust::transform(thrust::cuda::par.on(*stream),
-                          data._getRawData(),
-                          data._getRawData() + data._getNumber_of_elements(),
-                          data_weighted._getRawData(),
-                          lambda_weight_function);
-    }
+    thrust::transform(exec,
+                      data._getRawData(),
+                      data._getRawData() + data._getNumber_of_elements(),
+                      weight_matrix._getRawData(),
+                      lambda_weight_function);
     
     return;
 }

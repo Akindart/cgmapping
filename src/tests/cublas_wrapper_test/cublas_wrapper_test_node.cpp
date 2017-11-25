@@ -286,11 +286,7 @@ int main(int argc, char **argv) {
     cgmapping::cuda::exponential_Dmap_se3(d_linear_velocity,
                                           d_angular_velocity,
                                           d_homogenic_matrix,
-                                          d_auxiliar_matrix1,
-                                          d_auxiliar_matrix2,
-                                          <#initializer#>,
                                           &strm,
-                                          nullptr,
                                           nullptr,
                                           0.1);
     t=tmr.elapsed();
@@ -339,12 +335,10 @@ int main(int argc, char **argv) {
     std::cout << "Now comes the logarithmic map test!!!!!!!! HURRAY FOR US!" << std::endl;
     
     tmr.reset();
-    cgmapping::cuda::logarithmic_Dmap_se3(d_linear_velocity,
+    cgmapping::cuda::logarithmic_Dmap_se3(d_homogenic_matrix,
+                                          d_linear_velocity,
                                           d_angular_velocity,
-                                          d_homogenic_matrix,
-                                          d_auxiliar_matrix1,
-                                          d_auxiliar_matrix2,
-                                          &strm,
+                                          <#initializer#>,
                                           0.1);
     cudaDeviceSynchronize();
     t=tmr.elapsed();

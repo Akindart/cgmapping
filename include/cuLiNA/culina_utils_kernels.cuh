@@ -11,17 +11,25 @@ __global__
 extern void set_identity_matrix_kernel(double *d_matrix, int n_rows, int n_columns);
 
 __global__
+extern void set_diagonal_value_matrix_kernel(double *d_matrix, int n_rows, int n_columns, double value);
+
+__global__
+extern void set_zero_matrix_kernel(double *d_matrix, int n_rows, int n_columns);
+
+__global__
 extern void culina_Dsumm_kernel(double *d_matrix1,
                                 bool transpose_m1,
                                 double alpha,
-                                int n_rows,
-                                int n_columns,
-                                int ld,
+                                int ld_m1,
                                 double *d_matrix2,
                                 bool transpose_m2,
                                 double beta,
+                                int ld_m2,
                                 double *d_matrix_result,
-                                double gamma);
+                                double gamma,
+                                int ld_result,
+                                int n_rows_result,
+                                int n_columns_result);
 
 /***TODO create comments for this kernel
  *
@@ -45,6 +53,7 @@ extern void culina_diagonal_Dmultiplication_kernel(double *d_matrix1,
                                                    double beta);
 
 
+
 /***TODO create comments for this kernel
  *
  * result = alpha*S(d_vector)
@@ -62,6 +71,16 @@ extern void culina_Dskew_matrix3x3_operator_kernel(double *d_vector,
                                                    int n_rows_result,
                                                    int n_columns_result,
                                                    int ld_result);
+
+__global__
+extern void culina_Dvector_from_skew_matrix3x3_operator_kernel(double *d_skew_matrix,
+                                                               double alpha,
+                                                               int n_rows_matrix,
+                                                               int n_columns_matrix,
+                                                               int ld_matrix,
+                                                               double *d_vector_result,
+                                                               int n_rows_vector,
+                                                               int ld_vector);
 
 /***TODO create comments for this kernel
  *

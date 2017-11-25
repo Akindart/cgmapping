@@ -9,6 +9,7 @@
 
 cublasHandle_t cuBLAS_wrapper::cublas_wrapper::cublas_handle_;
 cublasStatus_t cuBLAS_wrapper::cublas_wrapper::stat_;
+std::mutex cuBLAS_wrapper::cublas_wrapper::cublas_mutex_;
 
 cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_start_cublas_handle_wrapper() {
     
@@ -50,23 +51,22 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dmultiplication(cuLiNA::c
                                                                        double beta,
                                                                        cudaStream_t *strm) {
     
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-   else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    cublas_wrapper::cublas_mutex_.lock();
     
-    int m = cu_matrix1._getRows();
-    int n = cu_matrix2._getColumns();
-    int k = cu_matrix1._getColumns();
-    int l = cu_matrix2._getRows();
+    auto stat = cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
+    cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
     
-    //std::cout << m << " " << n << " " << k << std::endl;
+    int m = result_matrix._getRows();
+    int n = result_matrix._getColumns();
+    int k = op_m1==CUBLAS_OP_T?cu_matrix1._getRows():cu_matrix1._getColumns();
     
     int ld_cu_m1 = cu_matrix1._getLeading_dimension();
     int ld_cu_m2 = cu_matrix2._getLeading_dimension();
     int ld_result = result_matrix._getLeading_dimension();
     
+    
     if (n > 1 && k > 1)
-        return cublasDgemm_v2(cublas_wrapper::_getCublas_handle(),
+        stat = cublasDgemm_v2(cublas_wrapper::_getCublas_handle(),
                               op_m1,
                               op_m2,
                               m,
@@ -80,9 +80,8 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dmultiplication(cuLiNA::c
                               &beta,
                               result_matrix._getRawData(),
                               ld_result);
-
     else if (n == 1 && k > 1)
-        return cublasDgemv_v2(cublas_wrapper::_getCublas_handle(),
+        stat = cublasDgemv_v2(cublas_wrapper::_getCublas_handle(),
                               op_m1,
                               m,
                               k,
@@ -96,13 +95,18 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dmultiplication(cuLiNA::c
                               n);
     
     else if (n == 1 && k == 1)
-        return cublasDdot_v2(cublas_wrapper::_getCublas_handle(),
+        stat = cublasDdot_v2(cublas_wrapper::_getCublas_handle(),
                              m,
                              cu_matrix1._getRawData(),
                              n,
                              cu_matrix2._getRawData(),
                              k,
                              result_matrix._getRawData());
+    
+    cublas_wrapper::cublas_mutex_.unlock();
+    
+    return stat;
+    
     
     
 };
@@ -116,9 +120,7 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
                                                                        float beta,
                                                                        cudaStream_t *strm) {
     
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
     
     int m = cu_matrix1._getRows();
     int n = cu_matrix1._getColumns();
@@ -175,6 +177,30 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
     
 };
 
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dnorm(cuLiNA::culina_tm<double> &cu_matrix,
+                                                             double *result,
+                                                             cudaStream_t *strm) {
+    
+    cublas_wrapper::cublas_mutex_.lock();
+    
+    auto stat = cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
+    cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, 0);
+    
+    stat = cublasDnrm2_v2(cublas_wrapper::_getCublas_handle(),
+                          cu_matrix._getRows(),
+                          cu_matrix._getRawData(),
+                          1,
+                          result);
+    
+    //stat = cublasGemmEx(cublas_wrapper::cublas_handle_, CUBLAS_OP_T, CUBLAS_OP_N, );
+    
+    cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, 0);
+    
+    cublas_wrapper::cublas_mutex_.unlock();
+    
+    return stat;
+}
+
 cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(cuLiNA::culina_tm<double> &cu_matrix1,
                                                             cuLiNA::culina_tm<double> &cu_matrix2,
                                                             cuLiNA::culina_tm<double> &result_matrix,
@@ -184,9 +210,29 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(cuLiNA::culina_tm<do
                                                             double beta,
                                                             cudaStream_t *strm) {
     
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
+    
+    //std::cout << op_m1 <<std::endl;
+    
+    int m = cu_matrix1._getRows();
+    int n = cu_matrix2._getColumns();
+    
+    int cu_matrix2_ld = cu_matrix2._getLeading_dimension();
+    
+    if(op_m1 == CUBLAS_OP_T) {
+     
+        std::cout << op_m1 << std::endl;
+        
+        m = cu_matrix1._getColumns();
+    
+    
+    }
+    if(op_m2 == CUBLAS_OP_T){
+        
+        n = cu_matrix2._getRows();
+    
+        cu_matrix2_ld = cu_matrix2._getRows();
+    }
     
     return cublasDgeam(cublas_wrapper::_getCublas_handle(),
                        op_m1,
@@ -210,9 +256,8 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Ddiag_multiplication(cuLi
                                                                             cublasSideMode_t mode,
                                                                             cudaStream_t *strm) {
     
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    
+    cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
     
     int diagonal_stride = 1;
           //ensures diagonal matrix is represented by either a vector with stride one or a diagonal matrix
@@ -243,9 +288,7 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(cuLiNA::culina_t
                                                                 int *info,
                                                                 cudaStream_t *strm){
     
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
     
     if(!cu_matrix._isSquare()){
         
@@ -254,14 +297,26 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(cuLiNA::culina_t
         
     }
     
-    const double *raw_data_cu_matrix = cu_matrix._getRawData();
-    double *raw_data_result_matrix = result_matrix._getRawData();
+//    const double *raw_data_cu_matrix = cu_matrix._getRawData();
+//    double *raw_data_result_matrix = result_matrix._getRawData();
+    
+    const double **matrix_vector;
+    cudaHostAlloc((void **)&matrix_vector, sizeof(double *), cudaHostAllocMapped);
+    
+    matrix_vector[0] = cu_matrix._getRawData();
+    
+    double **matrix_inv_vector;
+    cudaHostAlloc((void **)&matrix_inv_vector, sizeof(double *), cudaHostAllocMapped);
+    
+    matrix_inv_vector[0] = result_matrix._getRawData();
+    
+    //std::cout << "that's us mate" << std::endl;
     
     return cublasDmatinvBatched(cublas_wrapper::_getCublas_handle(),
                                 cu_matrix._getRows(),
-                                &raw_data_cu_matrix,
+                                matrix_vector,
                                 cu_matrix._getLeading_dimension(),
-                                &raw_data_result_matrix,
+                                matrix_inv_vector,
                                 result_matrix._getLeading_dimension(),
                                 info,
                                 1);
@@ -279,10 +334,7 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dtriangular_system_solver
                                                                                  cudaStream_t *strm) {
     
     
-    
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
+    cublasSetStream_v2(cublas_wrapper::cublas_handle_, ((strm != NULL)?*strm:NULL));
     
     int m = cu_matrix1._getColumns();
     int n = result_matrix._getColumns();
@@ -349,24 +401,5 @@ std::string cuBLAS_wrapper::cublas_wrapper::_cublasGetErrorString(cublasStatus_t
     
 }
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dnorm(cuLiNA::culina_tm<double> &cu_matrix,
-                                                             double *result,
-                                                             cudaStream_t *strm) {
-    
-    if(strm != NULL)
-        cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
-    else cublasSetStream_v2(cublas_wrapper::cublas_handle_, 0);
-    
-    cublasStatus_t stat;
-    
-    stat = cublasDnrm2_v2(cublas_wrapper::_getCublas_handle(),
-                          cu_matrix._getRows(),
-                          cu_matrix._getRawData(),
-                          1,
-                          result);
-    
-    cublas_wrapper::_cublasCheckErrors(stat, __FILE__, __FUNCTION__, 0);
-    
-    return stat;
-}
+
 

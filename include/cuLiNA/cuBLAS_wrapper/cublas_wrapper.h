@@ -7,7 +7,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <mutex>
+
 #include <cuLiNA/culina_base_matrix.h>
+
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
@@ -28,6 +31,8 @@ namespace cuBLAS_wrapper {
         static cublasHandle_t cublas_handle_;
         static cublasStatus_t stat_;
      
+        static std::mutex cublas_mutex_;
+        
      public:
         
         cublas_wrapper() {};
@@ -162,7 +167,7 @@ namespace cuBLAS_wrapper {
                                            cublasOperation_t op_m2,
                                            double alpha,
                                            double beta,
-                                           cudaStream_t *strm);
+                                           cudaStream_t *strm = NULL);
     
         //TODO: create comments explaining the function using doxygen format
         static cublasStatus_t _cublas_Ssum(cuLiNA::culina_base_matrix<float> &cu_matrix1,
@@ -179,13 +184,13 @@ namespace cuBLAS_wrapper {
                                                            cuLiNA::culina_tm<double> &diag_matrix,
                                                            cuLiNA::culina_tm<double> &result_matrix,
                                                            cublasSideMode_t mode,
-                                                           cudaStream_t *strm);
+                                                           cudaStream_t *strm = NULL);
     
         //TODO: create comments explaining the function using doxygen format
         static cublasStatus_t _cublas_Dinverse(cuLiNA::culina_tm<double> &cu_matrix,
                                                cuLiNA::culina_tm<double> &result_matrix,
                                                int *info,
-                                               cudaStream_t *strm);
+                                               cudaStream_t *strm = NULL);
         
         //TODO: create comments explaining the function using doxygen format
         static cublasStatus_t _cublas_Dtriangular_system_solver(cuLiNA::culina_tm<double> &cu_matrix1,

@@ -5,44 +5,22 @@
 #ifndef CGMAPPING_CUBLAS_BASE_MATRIX_H
 #define CGMAPPING_CUBLAS_BASE_MATRIX_H
 
+#include <iomanip>
+
 #include <thrust/device_vector.h>
+
 #include <cuLiNA/culina_utils.cuh>
 #include <cuLiNA/culina_error_data_types.h>
+#include <cuLiNA/culina_matrix_allocator.h>
 #include <cuLiNA/culina_template_matrix.h>
+
+#include <cuda_device_runtime_api.h>
+
+#include <cuLiNA/thrust_test.cu>
 
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
 
 namespace cuLiNA {
-    
-    template<typename T>
-    struct culina_matrix_allocator : thrust::device_malloc_allocator<T>
-    {
-    
-        // shorthand for the name of the base class
-        typedef thrust::device_malloc_allocator<T> super_t;
-    
-        // get access to some of the base class's typedefs
-    
-        // note that because we inherited from device_malloc_allocator,
-        // pointer is actually thrust::device_ptr<T>
-        typedef typename super_t::pointer   pointer;
-    
-        typedef typename super_t::size_type size_type;
-    
-        pointer allocate(size_type n)
-        {
-            
-            T* dm_pointer;
-            
-            cudaMallocManaged(&dm_pointer, sizeof(T)*n);
-            
-            pointer dev_ptr(dm_pointer);
-            
-            return dev_ptr;
-            
-        }
-    
-    };
     
 //    typedef enum {
 //
@@ -162,10 +140,19 @@ namespace cuLiNA {
         
         inline void _setRows(int rows_){
             
-            culina_base_matrix::rows_ = rows_;
-            culina_base_matrix::number_of_elements_ = culina_base_matrix::rows_*culina_base_matrix::columns_;
-            culina_base_matrix::leading_dimension_ = rows_;
-            
+            if(this->matrix_type_!=DIAGONAL) {
+    
+                culina_base_matrix::rows_ = rows_;
+                culina_base_matrix::number_of_elements_ = culina_base_matrix::rows_ * culina_base_matrix::columns_;
+                culina_base_matrix::leading_dimension_ = rows_;
+            }
+            else {
+    
+                culina_base_matrix::rows_ = culina_base_matrix::columns_ = rows_;
+                culina_base_matrix::number_of_elements_ = culina_base_matrix::rows_ * culina_base_matrix::columns_;
+                culina_base_matrix::leading_dimension_ = rows_;
+                
+            }
         }
         
         inline int _getColumns() const {
@@ -173,8 +160,14 @@ namespace cuLiNA {
         }
         
         inline void _setColumns(int columns_) {
-            this->columns_ = columns_;
-            number_of_elements_ = rows_*columns_;
+            
+            if(this->matrix_type_!=DIAGONAL) {
+             
+                this->columns_ = columns_;
+                number_of_elements_ = rows_ * this->columns_;
+            
+            }
+        
         }
         
         inline int _getLeading_dimension() const {
@@ -247,7 +240,8 @@ namespace cuLiNA {
             if(this->matrix_type_ != matrix_advanced_initialization_t::DIAGONAL) {
             
                 this->data_.reserve((uint) this->number_of_elements_);
-                
+                //vector_resize<T, Alloc>(this->data_, (uint)this->number_of_elements_, 0);
+              
             }
             else this->data_.reserve((uint) this->columns_);
     
@@ -255,7 +249,7 @@ namespace cuLiNA {
             
         };
         
-        inline cuLiNA::cuLiNA_error_t _setIdentity(cudaStream_t *strm = NULL) {
+        inline cuLiNA::cuLiNA_error_t _setIdentity(cudaStream_t *strm = NULL) override {
             
             if (this->data_.capacity() == 0)
                 this->_allocateMatrixDataMemory();
@@ -265,50 +259,56 @@ namespace cuLiNA {
             T *d_matrix = this->_getRawData();
             
             stat = cuLiNA::set_Didentity_matrix(d_matrix, rows_, columns_, strm);
+            cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
             
             return stat;
             
         };
-        
-        inline bool _isSquare(){
-            
-            return (rows_ == columns_);
-            
+    
+       inline  cuLiNA_error_t _setZero(cudaStream_t *strm = NULL) override {
+           
+           if (this->data_.capacity() == 0)
+               this->_allocateMatrixDataMemory();
+    
+           cuLiNA_error_t stat = CULINA_SUCCESS;
+    
+           T *d_matrix = this->_getRawData();
+    
+           stat = cuLiNA::set_Dzero_matrix(d_matrix, rows_, columns_, strm);
+           cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+           return stat;
+           
         }
     
+        inline cuLiNA::cuLiNA_error_t _setDiagonalValue(T value, cudaStream_t *strm = NULL) override {
+    
+            if (this->data_.capacity() == 0)
+                this->_allocateMatrixDataMemory();
+    
+            cuLiNA_error_t stat = CULINA_SUCCESS;
+    
+            T *d_matrix = this->_getRawData();
+    
+            stat = cuLiNA::set_Ddiagonal_value_matrix(d_matrix, rows_, columns_, value, strm);
+            cuLiNACheckErrors(stat, __FILE__, __FUNCTION__, __LINE__);
+    
+            return stat;
+           
+       }
+        
         inline bool _isEmpty() const override {
            
             return data_.empty();
         
         }
-    
-        bool operator==(const culina_tm<T> &rhs) override {
-            
-            if(//!this->_isEmpty() && !rhs._isEmpty() &&
-                (this->_getRows() == rhs._getRows()) &&
-                (this->_getColumns() == rhs._getColumns()) &&
-                    (this->_getMatrix_type() == rhs._getMatrix_type())){
-    
-                
-                for (int i = 0; i < this->_getRows(); ++i) {
-                    for (int j = 0; j < this->_getColumns(); ++j) {
-                    
-                        if(abs(this->_getRawValue(i, j) - rhs._getRawValue(i, j)) > 0.001)  return false;
-                    
-                    }
-                }
-            
-            }
-            else{
-                
-                std::cout << "hereherer" << std::endl;
-                return false;
-                
-            }
-            
-            return true;
+        
+        culina_tm<T>& operator=(const culina_tm<T>& rhs) {
+
+           return culina_tm<T>::operator=(rhs);
+           
         }
-    
+        
         /***
          * Diagonal matrices will return always the diagonal element of the row indicated
          *
@@ -321,46 +321,10 @@ namespace cuLiNA {
             return this->data_[IDX2C(row, col, leading_dimension_)];
             
         };
-    
         
-        inline cudaError_t _loadData(T *h_data, int num_of_elements, cudaStream_t *strm = NULL) {
-
-            cudaError_t stat;
-
-            if(strm != NULL)
-                stat = cudaMemcpyAsync(_getRawData(), h_data, sizeof(T)*num_of_elements, cudaMemcpyHostToDevice, *strm);
-            else  cudaMemcpy(_getRawData(), h_data, sizeof(T)*num_of_elements, cudaMemcpyHostToDevice);
+        void _printMatrix(bool print_matrix_content = true, bool print_matrix_info = false, std::ostream &output_stream = std::cout) {
             
-            cudaCheckErrors(stat, __FILE__, __FUNCTION__);
-
-            return stat;
-
-        };
-    
-        /***
-         *
-         * @param [in] h_data must've been pre-allocated outside this function and also be of the same
-         * type of the cuda_matrix it's receiving information from
-         *
-         * */
-        inline cudaError_t _downloadData(T *h_data, int num_of_elements, cudaStream_t *strm = NULL) {
-        
-            cudaError_t stat;
-        
-            if(strm != NULL)
-                stat = cudaMemcpyAsync(h_data,_getRawData(), sizeof(T)*num_of_elements, cudaMemcpyDeviceToHost, *strm);
-            else  cudaMemcpy(h_data,_getRawData(), sizeof(T)*num_of_elements, cudaMemcpyDeviceToHost);
-        
-            cudaCheckErrors(stat, __FILE__, __FUNCTION__);
-        
-            return stat;
-        
-        };
-
-        
-        void _printMatrix(bool print_matrix_content = true, bool print_matrix_info = false) {
-            
-            if (data_.capacity() && print_matrix_content) {
+            if (this->_getData().capacity() && print_matrix_content) {
     
                 for (int i = 0; i < rows_; i++) {
         
@@ -368,30 +332,42 @@ namespace cuLiNA {
             
                         T print_value;
             
-                        if (matrix_type_ == DIAGONAL && j != i)
-                            print_value = 0;
-                        else if (matrix_type_ == DIAGONAL)
-                            print_value = this->data_[IDX2C(i, 0, leading_dimension_)];
-                        else print_value = this->data_[IDX2C(i, j, leading_dimension_)];
-            
-                        std::cout << "[" << i << "," << j << "] = " << print_value << "\t";
-            
+//                        if (this->_getMatrix_type() == DIAGONAL && j != i)
+//                            print_value = 0;
+//                        else
+                        if (matrix_type_ == DIAGONAL && j == i) {
+                        
+                            print_value = this->_getRawData()[IDX2C(i, 0, leading_dimension_)];
+    
+                            output_stream << std::left << std::setw(15) << print_value;
+    
+                            continue;
+                            
+                        }
+                        else if(matrix_type_ != DIAGONAL) {
+                            print_value = this->_getRawData()[IDX2C(i, j, leading_dimension_)];
+    
+                            //output_stream << "[" << i << "," << j << "] = " << print_value << "\t";
+    
+                            output_stream << std::left << std::setw(15) << print_value;
+                        }
+                    
                     }
-        
-                    std::cout << std::endl;
+    
+                    output_stream << std::endl;
         
                 }
                 
             }
             else if(print_matrix_content)
-                std::cout << "Matrix data is not allocated, cant print its content" << std::endl;
+                output_stream << "Matrix data is not allocated, cant print its content" << std::endl;
     
             if(print_matrix_info){
-        
-                std::cout << "Rows: " << this->rows_ << std::endl;
-                std::cout << "Columns: " << this->columns_ << std::endl;
-                std::cout << "Leading dimension: " << this->leading_dimension_ << std::endl;
-                std::cout << "Number of elements: " << this->number_of_elements_ << std::endl;
+    
+                output_stream << "Rows: " << this->rows_ << std::endl;
+                output_stream << "Columns: " << this->columns_ << std::endl;
+                output_stream << "Leading dimension: " << this->leading_dimension_ << std::endl;
+                output_stream << "Number of elements: " << this->number_of_elements_ << std::endl;
         
             }
             
@@ -399,7 +375,11 @@ namespace cuLiNA {
         
         //virtual int _getTrace(cudaStream_t *strm = NULL)=0;
         
-        virtual ~culina_base_matrix() {};
+        virtual ~culina_base_matrix() {
+        
+        
+        
+        };
         
     };
     
