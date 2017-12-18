@@ -39,25 +39,25 @@ namespace cuSOLVER_wrapper {
         }
         
         //TODO: create function comments
-        static cusolverStatus_t _cusolver_Dqr_factorization(cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                            cuLiNA::culina_base_matrix<double> &workspace,
+        static cusolverStatus_t _cusolver_Dqr_factorization(cuLiNA::culina_tm<double> &result_matrix,
+                                                            cuLiNA::culina_tm<double> &workspace,
                                                             double *TAU,
                                                             int *devInfo,
                                                             cudaStream_t *strm = NULL);
     
         //TODO: create function comments
-        static cusolverStatus_t _cusolver_Doperation_multiplication_qr(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                       cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                       cuLiNA::culina_base_matrix<double> &workspace,
+        static cusolverStatus_t _cusolver_Doperation_multiplication_qr(cuLiNA::culina_tm<double> &cu_matrix,
+                                                                       cuLiNA::culina_tm<double> &result_matrix,
+                                                                       cuLiNA::culina_tm<double> &workspace,
                                                                        double *TAU,
                                                                        int *devInfo,
                                                                        cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                                        cublasSideMode_t side = CUBLAS_SIDE_LEFT,
                                                                        cudaStream_t *strm = NULL);
         
-        static cusolverStatus_t _cusolver_Dgeqrf_bufferSize(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                   int *lwork,
-                                                                   cudaStream_t *strm = NULL);
+        static cusolverStatus_t _cusolver_Dgeqrf_bufferSize(cuLiNA::culina_tm<double> &cu_matrix,
+                                                            int *lwork,
+                                                            cudaStream_t *strm = NULL);
         
         static std::string _cusolver_wrapper_get_cusolver_error(cusolverStatus_t stat);
         static void _cusolverCheckErrors(cusolverStatus_t stat, const std::string &file, const std::string &function, const int line = 0);

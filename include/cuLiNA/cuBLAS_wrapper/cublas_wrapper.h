@@ -85,9 +85,9 @@ namespace cuBLAS_wrapper {
          * @param [in] beta = 0
          *
          */
-        static cublasStatus_t _cublas_Dmultiplication(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                                      cuLiNA::culina_base_matrix<double> &cu_matrix2,
-                                                      cuLiNA::culina_base_matrix<double> &result_matrix,
+        static cublasStatus_t _cublas_Dmultiplication(cuLiNA::culina_tm<double> &cu_matrix1,
+                                                      cuLiNA::culina_tm<double> &cu_matrix2,
+                                                      cuLiNA::culina_tm<double> &result_matrix,
                                                       cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                       cublasOperation_t op_m2 = CUBLAS_OP_N,
                                                       double alpha = 1,
@@ -145,9 +145,9 @@ namespace cuBLAS_wrapper {
          * @param [in] beta = 0
          *
          */
-        static cublasStatus_t _cublas_Smultiplication(cuLiNA::culina_base_matrix<float> &cu_matrix1,
-                                                      cuLiNA::culina_base_matrix<float> &cu_matrix2,
-                                                      cuLiNA::culina_base_matrix<float> &result_matrix,
+        static cublasStatus_t _cublas_Smultiplication(cuLiNA::culina_tm<float> &cu_matrix1,
+                                                      cuLiNA::culina_tm<float> &cu_matrix2,
+                                                      cuLiNA::culina_tm<float> &result_matrix,
                                                       cublasOperation_t op_m1 = CUBLAS_OP_N,
                                                       cublasOperation_t op_m2 = CUBLAS_OP_N,
                                                       float alpha = 1,
@@ -155,9 +155,9 @@ namespace cuBLAS_wrapper {
                                                       cudaStream_t *strm = NULL);
     
         //TODO: create comments explaining the function using doxygen format
-        static cublasStatus_t _cublas_Dsum(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                           cuLiNA::culina_base_matrix<double> &cu_matrix2,
-                                           cuLiNA::culina_base_matrix<double> &result_matrix,
+        static cublasStatus_t _cublas_Dsum(cuLiNA::culina_tm<double> &cu_matrix1,
+                                           cuLiNA::culina_tm<double> &cu_matrix2,
+                                           cuLiNA::culina_tm<double> &result_matrix,
                                            cublasOperation_t op_m1,
                                            cublasOperation_t op_m2,
                                            double alpha,
@@ -175,21 +175,21 @@ namespace cuBLAS_wrapper {
                                            cudaStream_t *strm);
     
         //TODO: create comments explaining the function using doxygen format
-        static cublasStatus_t _cublas_Ddiag_multiplication(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                           cuLiNA::culina_base_matrix<double> &diag_matrix,
-                                                           cuLiNA::culina_base_matrix<double> &result_matrix,
+        static cublasStatus_t _cublas_Ddiag_multiplication(cuLiNA::culina_tm<double> &cu_matrix,
+                                                           cuLiNA::culina_tm<double> &diag_matrix,
+                                                           cuLiNA::culina_tm<double> &result_matrix,
                                                            cublasSideMode_t mode,
                                                            cudaStream_t *strm);
     
         //TODO: create comments explaining the function using doxygen format
-        static cublasStatus_t _cublas_Dinverse(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                               cuLiNA::culina_base_matrix<double> &result_matrix,
+        static cublasStatus_t _cublas_Dinverse(cuLiNA::culina_tm<double> &cu_matrix,
+                                               cuLiNA::culina_tm<double> &result_matrix,
                                                int *info,
                                                cudaStream_t *strm);
         
         //TODO: create comments explaining the function using doxygen format
-        static cublasStatus_t _cublas_Dtriangular_system_solver(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                                                cuLiNA::culina_base_matrix<double> &result_matrix,
+        static cublasStatus_t _cublas_Dtriangular_system_solver(cuLiNA::culina_tm<double> &cu_matrix1,
+                                                                cuLiNA::culina_tm<double> &result_matrix,
                                                                 double alpha,
                                                                 cublasSideMode_t side = CUBLAS_SIDE_LEFT,
                                                                 cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER,
@@ -198,7 +198,7 @@ namespace cuBLAS_wrapper {
                                                                 cudaStream_t *strm = NULL);
     
         //TODO: create comments explaining the function using doxygen format
-        static cublasStatus_t _cublas_Dnorm(cuLiNA::culina_base_matrix<double> &cu_matrix,
+        static cublasStatus_t _cublas_Dnorm(cuLiNA::culina_tm<double> &cu_matrix,
                                             double *result,
                                             cudaStream_t *strm = NULL);
         

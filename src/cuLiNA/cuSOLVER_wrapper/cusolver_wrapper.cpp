@@ -40,11 +40,11 @@ cusolverStatus_t cusolver_wrapper::_start_cusolverDn_handle_wrapper() {
     
 }
 
-cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                              cuLiNA::culina_base_matrix<double> &workspace,
-                                                              double *TAU,
-                                                              int *devInfo,
-                                                              cudaStream_t *strm) {
+cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_tm<double> &result_matrix,
+                                                               cuLiNA::culina_tm<double> &workspace,
+                                                               double *TAU,
+                                                               int *devInfo,
+                                                               cudaStream_t *strm) {
     
     if(strm != NULL)
         cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);
@@ -65,14 +65,14 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Dqr_factorization(cuLiNA::culina_ba
     
 };
 
-cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                         cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                         cuLiNA::culina_base_matrix<double> &workspace,
-                                                                         double *TAU,
-                                                                         int *devInfo,
-                                                                         cublasOperation_t op_m1,
-                                                                         cublasSideMode_t side,
-                                                                         cudaStream_t *strm) {
+cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA::culina_tm<double> &cu_matrix,
+                                                                          cuLiNA::culina_tm<double> &result_matrix,
+                                                                          cuLiNA::culina_tm<double> &workspace,
+                                                                          double *TAU,
+                                                                          int *devInfo,
+                                                                          cublasOperation_t op_m1,
+                                                                          cublasSideMode_t side,
+                                                                          cudaStream_t *strm) {
     
     if(strm != NULL)
         cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);
@@ -103,9 +103,9 @@ cusolverStatus_t cusolver_wrapper::_cusolver_Doperation_multiplication_qr(cuLiNA
     
 }
 
-cusolverStatus_t cusolver_wrapper::_cusolver_Dgeqrf_bufferSize(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                              int *lwork,
-                                                              cudaStream_t *strm) {
+cusolverStatus_t cusolver_wrapper::_cusolver_Dgeqrf_bufferSize(cuLiNA::culina_tm<double> &cu_matrix,
+                                                               int *lwork,
+                                                               cudaStream_t *strm) {
     
     if(strm != NULL)
         cusolverDnSetStream(cusolver_wrapper::cusolverDn_handle_, *strm);

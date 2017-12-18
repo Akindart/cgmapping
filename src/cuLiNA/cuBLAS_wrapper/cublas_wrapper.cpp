@@ -41,14 +41,14 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_start_cublas_handle_wrapper() {
     
 };
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper:: _cublas_Dmultiplication(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                                                      cuLiNA::culina_base_matrix<double> &cu_matrix2,
-                                                                      cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                      cublasOperation_t op_m1,
-                                                                      cublasOperation_t op_m2,
-                                                                      double alpha,
-                                                                      double beta,
-                                                                      cudaStream_t *strm) {
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dmultiplication(cuLiNA::culina_tm<double> &cu_matrix1,
+                                                                       cuLiNA::culina_tm<double> &cu_matrix2,
+                                                                       cuLiNA::culina_tm<double> &result_matrix,
+                                                                       cublasOperation_t op_m1,
+                                                                       cublasOperation_t op_m2,
+                                                                       double alpha,
+                                                                       double beta,
+                                                                       cudaStream_t *strm) {
     
     if(strm != NULL)
         cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
@@ -107,14 +107,14 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper:: _cublas_Dmultiplication(cuLiNA::
     
 };
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::culina_base_matrix<float> &cu_matrix1,
-                                                                      cuLiNA::culina_base_matrix<float> &cu_matrix2,
-                                                                      cuLiNA::culina_base_matrix<float> &result_matrix,
-                                                                      cublasOperation_t op_m1,
-                                                                      cublasOperation_t op_m2,
-                                                                      float alpha,
-                                                                      float beta,
-                                                                      cudaStream_t *strm) {
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::culina_tm<float> &cu_matrix1,
+                                                                       cuLiNA::culina_tm<float> &cu_matrix2,
+                                                                       cuLiNA::culina_tm<float> &result_matrix,
+                                                                       cublasOperation_t op_m1,
+                                                                       cublasOperation_t op_m2,
+                                                                       float alpha,
+                                                                       float beta,
+                                                                       cudaStream_t *strm) {
     
     if(strm != NULL)
         cublasSetStream_v2(cublas_wrapper::cublas_handle_, *strm);
@@ -175,9 +175,9 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Smultiplication(cuLiNA::c
     
 };
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                                            cuLiNA::culina_base_matrix<double> &cu_matrix2,
-                                                            cuLiNA::culina_base_matrix<double> &result_matrix,
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(cuLiNA::culina_tm<double> &cu_matrix1,
+                                                            cuLiNA::culina_tm<double> &cu_matrix2,
+                                                            cuLiNA::culina_tm<double> &result_matrix,
                                                             cublasOperation_t op_m1,
                                                             cublasOperation_t op_m2,
                                                             double alpha,
@@ -204,9 +204,9 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dsum(cuLiNA::culina_base_
     
 };
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Ddiag_multiplication(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                            cuLiNA::culina_base_matrix<double> &diag_matrix,
-                                                                            cuLiNA::culina_base_matrix<double> &result_matrix,
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Ddiag_multiplication(cuLiNA::culina_tm<double> &cu_matrix,
+                                                                            cuLiNA::culina_tm<double> &diag_matrix,
+                                                                            cuLiNA::culina_tm<double> &result_matrix,
                                                                             cublasSideMode_t mode,
                                                                             cudaStream_t *strm) {
     
@@ -238,8 +238,8 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Ddiag_multiplication(cuLi
     
 }
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(cuLiNA::culina_base_matrix<double> &cu_matrix,
-                                                                cuLiNA::culina_base_matrix<double> &result_matrix,
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(cuLiNA::culina_tm<double> &cu_matrix,
+                                                                cuLiNA::culina_tm<double> &result_matrix,
                                                                 int *info,
                                                                 cudaStream_t *strm){
     
@@ -258,25 +258,25 @@ cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dinverse(cuLiNA::culina_b
     double *raw_data_result_matrix = result_matrix._getRawData();
     
     return cublasDmatinvBatched(cublas_wrapper::_getCublas_handle(),
-                         cu_matrix._getRows(),
-                         &raw_data_cu_matrix,
-                         cu_matrix._getLeading_dimension(),
-                         &raw_data_result_matrix,
-                         result_matrix._getLeading_dimension(),
-                         info,
-                         1);
+                                cu_matrix._getRows(),
+                                &raw_data_cu_matrix,
+                                cu_matrix._getLeading_dimension(),
+                                &raw_data_result_matrix,
+                                result_matrix._getLeading_dimension(),
+                                info,
+                                1);
     
 }
 
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dtriangular_system_solver(cuLiNA::culina_base_matrix<double> &cu_matrix1,
-                                                                                cuLiNA::culina_base_matrix<double> &result_matrix,
-                                                                                double alpha,
-                                                                                cublasSideMode_t side,
-                                                                                cublasFillMode_t uplo,
-                                                                                cublasOperation_t op_m1,
-                                                                                cublasDiagType_t diag,
-                                                                                cudaStream_t *strm) {
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dtriangular_system_solver(cuLiNA::culina_tm<double> &cu_matrix1,
+                                                                                 cuLiNA::culina_tm<double> &result_matrix,
+                                                                                 double alpha,
+                                                                                 cublasSideMode_t side,
+                                                                                 cublasFillMode_t uplo,
+                                                                                 cublasOperation_t op_m1,
+                                                                                 cublasDiagType_t diag,
+                                                                                 cudaStream_t *strm) {
     
     
     
@@ -349,7 +349,7 @@ std::string cuBLAS_wrapper::cublas_wrapper::_cublasGetErrorString(cublasStatus_t
     
 }
 
-cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dnorm(cuLiNA::culina_base_matrix<double> &cu_matrix,
+cublasStatus_t cuBLAS_wrapper::cublas_wrapper::_cublas_Dnorm(cuLiNA::culina_tm<double> &cu_matrix,
                                                              double *result,
                                                              cudaStream_t *strm) {
     
